@@ -85,7 +85,7 @@ internal fun WorkSection(state: InspectorState, pane: PaneWidth) {
         list = {
             Column(Modifier.fillMaxSize()) {
                 Text(
-                    "WorkManager 2.10 · ${all.size} jobs",
+                    "${InspectorStore.workLabel ?: "Background work"} · ${all.size} jobs",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     style = InspectorType.meta,
                 )

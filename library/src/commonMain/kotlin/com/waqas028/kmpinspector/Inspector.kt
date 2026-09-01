@@ -66,10 +66,16 @@ object Inspector {
 
     fun recordCrash(record: CrashRecord) = InspectorStore.addCrash(record)
 
-    /** Replaces the Background Work list. Android-only in the UI; a no-op tab elsewhere. */
-    fun setWork(jobs: List<WorkJob>) {
+    /**
+     * Replaces the Background Work list. Android-only in the UI; a no-op tab elsewhere.
+     *
+     * [engineLabel] is shown above the list, e.g. "WorkManager 2.11" — the inspector has no way to
+     * discover the scheduler's version itself.
+     */
+    fun setWork(jobs: List<WorkJob>, engineLabel: String? = null) {
         InspectorStore.work.clear()
         InspectorStore.work.addAll(jobs)
+        InspectorStore.workLabel = engineLabel
     }
 
     fun setDatabase(info: DbInfo, tables: List<DbTable>) {

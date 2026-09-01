@@ -28,6 +28,8 @@ internal object InspectorStore {
 
     var database by mutableStateOf<DbInfo?>(null)
     var appId by mutableStateOf("unknown")
+    /** Host-supplied label for the work engine, e.g. "WorkManager 2.11". */
+    var workLabel by mutableStateOf<String?>(null)
     var variant by mutableStateOf("debug")
 
     /** Unread network activity since the inspector was last opened — drives the bubble badge. */
