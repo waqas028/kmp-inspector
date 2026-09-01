@@ -38,12 +38,20 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            implementation(compose.components.resources)
         }
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
     }
+}
+
+compose.resources {
+    // Internal to the library: consumers should never see a generated Res class from a dependency.
+    publicResClass = false
+    packageOfResClass = "com.waqas028.kmpinspector.resources"
+    generateResClass = always
 }
 
 mavenPublishing {
@@ -60,7 +68,9 @@ mavenPublishing {
 
     pom {
         name = "KmpInspector"
-        description = "A Kotlin Multiplatform library."
+        description = "In-app debugging overlay for Compose Multiplatform: inspect network " +
+            "traffic, database contents, background work, logs and crashes from inside a " +
+            "running app on Android, iOS and desktop."
         inceptionYear = "2026"
         url = "https://github.com/waqas028/kmp-inspector/"
         licenses {

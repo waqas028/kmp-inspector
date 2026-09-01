@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import com.waqas028.kmpinspector.data.InspectorStore
 import com.waqas028.kmpinspector.presentation.bubble.InspectorBubble
 import com.waqas028.kmpinspector.presentation.rememberInspectorState
+import com.waqas028.kmpinspector.presentation.theme.ProvideInspectorFonts
 import com.waqas028.kmpinspector.presentation.shell.InspectorShell
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -39,6 +40,9 @@ fun KmpInspector(
         content()
         return
     }
+
+    // Install the bundled mono face before any inspector UI composes.
+    ProvideInspectorFonts()
 
     var open by remember { mutableStateOf(false) }
     val state = rememberInspectorState()
