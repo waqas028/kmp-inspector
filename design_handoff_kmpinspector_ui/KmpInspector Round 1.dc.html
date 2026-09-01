@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/classical-55bcba37-f4e0-4268-9718-b777b1499bc9/styles.css">
+<script src="_ds/classical-55bcba37-f4e0-4268-9718-b777b1499bc9/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);text-wrap:pretty}
+a{color:var(--color-accent-700);text-underline-offset:3px}
+a:hover{color:var(--color-accent-600)}
+.material-symbols-outlined{font-variation-settings:'wght' 300,'opsz' 20;user-select:none}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(224,140,125,.45)}50%{box-shadow:0 0 0 9px rgba(224,140,125,0)}}
+</style>
+</helmet>
+
+<div style="max-width:1240px;margin:0 auto;padding:48px 40px 96px">
+
+<div style="font-family:var(--font-heading);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700);font-feature-settings:'tnum'">Round 1 · Shell and all six sections</div>
+<h1 style="font-size:52px;font-weight:400;margin:10px 0 0;letter-spacing:-.02em">KmpInspector</h1>
+<p style="font-size:19px;line-height:1.5;margin:14px 0 0;max-width:44ch;color:color-mix(in srgb,var(--color-text) 70%,transparent)">In-app debugging for Compose Multiplatform. A live prototype — tap rows, switch tabs, expand JSON, edit cells.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:0;margin:38px 0 0;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">
+  <div style="padding:20px 22px 20px 0;border-right:1px solid var(--color-divider)">
+    <h6 style="margin:0 0 8px;color:var(--color-accent-700)">Where this starts</h6>
+    <p style="margin:0;font-size:14px;line-height:1.6;text-align:justify;hyphens:auto">Your library today is a draggable FAB and an empty <code style="font-family:'JetBrains Mono',ui-monospace;font-size:12.5px">InspectorScreen</code>. Everything here is what goes inside that Scaffold, so nothing below fights the code that exists.</p>
+  </div>
+  <div style="padding:20px 22px;border-right:1px solid var(--color-divider)">
+    <h6 style="margin:0 0 8px;color:var(--color-accent-700)">The skin</h6>
+    <p style="margin:0;font-size:14px;line-height:1.6;text-align:justify;hyphens:auto">Material 3 structure, density and behaviour; Classical's serif headings, hairline rules and gold-as-stroke carried onto a warm near-black. Material Symbols throughout, JetBrains Mono for every technical value.</p>
+  </div>
+  <div style="padding:20px 0 20px 22px">
+    <h6 style="margin:0 0 8px;color:var(--color-accent-700)">What is here</h6>
+    <p style="margin:0;font-size:14px;line-height:1.6;text-align:justify;hyphens:auto">All six sections, populated and empty: Network, Database, Background Work, Logs, and Crashes &amp; Exceptions, each with its first-run state. Still outstanding: the light theme.</p>
+  </div>
+</div>
+
+<div style="margin:34px 0 0;border:1px solid var(--color-accent-300);border-left:3px solid var(--color-accent);border-radius:var(--radius-md);padding:20px 24px;background:color-mix(in srgb,var(--color-accent) 5%,transparent)">
+  <h6 style="margin:0 0 10px">Three places your brief argues with itself</h6>
+  <div style="display:grid;gap:12px;font-size:14px;line-height:1.6">
+    <div><strong>Bubble opacity vs. accessibility.</strong> A 40%-opacity control cannot meet 4.5:1, and a badge on a translucent surface is unreadable. Resolution: the resting tab is decorative and non-informational; the moment there is unread activity or a crash it goes fully opaque, and the badge never renders below full opacity. Contrast rules apply to the opaque states.</div>
+    <div><strong>Dynamic color vs. no colour-only status.</strong> If tonal palettes come from the user's wallpaper, you cannot promise any status hue survives. Resolution: status is a glyph plus the literal code plus the word; colour is the third signal, drawn from a fixed debug palette that ignores dynamic color. Dynamic color is applied to chrome only — app bar, nav, ripples.</div>
+    <div><strong>Global search across seven sections.</strong> One field that means seven different things is a worse tool than a per-section filter. Resolution: search is scoped to the active tab and says so in its placeholder; a cross-section search would need result grouping and its own screen.</div>
+  </div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-end;margin:38px 0 30px;padding:18px 0 0;border-top:1px solid var(--color-divider)">
+  <div>
+    <h6 style="margin:0 0 8px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Width</h6>
+    <div style="display:flex;gap:6px"><sc-for list="{{ widthOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.go }}" style="{{ o.css }}" style-hover="border-color:var(--color-accent)">{{ o.label }}</button></sc-for></div>
+  </div>
+  <div>
+    <h6 style="margin:0 0 8px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Platform</h6>
+    <div style="display:flex;gap:6px"><sc-for list="{{ platOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.go }}" style="{{ o.css }}" style-hover="border-color:var(--color-accent)">{{ o.label }}</button></sc-for></div>
+  </div>
+  <div>
+    <h6 style="margin:0 0 8px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Data</h6>
+    <div style="display:flex;gap:6px"><sc-for list="{{ dataOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.go }}" style="{{ o.css }}" style-hover="border-color:var(--color-accent)">{{ o.label }}</button></sc-for></div>
+  </div>
+  <div>
+    <h6 style="margin:0 0 8px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Annotations</h6>
+    <div style="display:flex;gap:6px"><sc-for list="{{ annOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.go }}" style="{{ o.css }}" style-hover="border-color:var(--color-accent)">{{ o.label }}</button></sc-for></div>
+  </div>
+</div>
+
+<section id="t1">
+
+<div id="1a" style="scroll-margin-top:16px;margin:0 0 64px">
+  <div style="display:flex;align-items:baseline;gap:10px;margin:0 0 4px">
+    <a href="#1a" style="font:500 10.5px 'JetBrains Mono',ui-monospace;padding:3px 7px;background:var(--color-neutral-900);color:var(--color-neutral-100);border-radius:5px;text-decoration:none">1a</a>
+    <h3 style="margin:0;font-size:26px;font-weight:400">The floating bubble</h3>
+  </div>
+  <p style="margin:0 0 22px;font-size:14px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Drag it. Release anywhere and it snaps to the nearest side, then recedes.</p>
+
+  <div style="display:grid;grid-template-columns:340px minmax(0,1fr);gap:44px;align-items:start">
+    <div>
+      <div style="position:relative;width:340px;height:540px;border-radius:26px;border:1px solid var(--color-divider);background:#fbfaf9;box-shadow:var(--shadow-md);overflow:hidden;touch-action:none" ref="{{ bubbleBox }}">
+        <div style="height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font:500 11px 'JetBrains Mono',ui-monospace;color:#8b8781">9:41<span>▮▮▮</span></div>
+        <div style="padding:6px 20px 0">
+          <div style="font-family:var(--font-heading);font-size:22px;letter-spacing:-.01em">Any host app</div>
+          <div style="font-size:12px;color:#8b8781;margin:2px 0 16px">The bubble is not allowed to break this screen.</div>
+          <div style="display:grid;gap:10px">
+            <div style="height:96px;border-radius:6px;background:#efece8;border:1px solid rgba(0,0,0,.06)"></div>
+            <div style="height:12px;width:70%;border-radius:3px;background:#eae7e3"></div>
+            <div style="height:12px;width:45%;border-radius:3px;background:#eae7e3"></div>
+          </div>
+        </div>
+        <div style="position:absolute;left:20px;right:20px;bottom:104px;display:flex;gap:10px">
+          <button style="flex:1;height:48px;border-radius:6px;border:1px solid #201f1d;background:transparent;font-family:var(--font-heading);font-size:14px;color:#201f1d;cursor:pointer">Add to bag</button>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:76px;border-top:1px solid rgba(0,0,0,.08);display:flex;align-items:center;justify-content:space-around;color:#a6a29c">
+          <span class="material-symbols-outlined">home</span><span class="material-symbols-outlined">search</span><span class="material-symbols-outlined">favorite</span><span class="material-symbols-outlined">person</span>
+        </div>
+        <div onPointerDown="{{ bubbleDown }}" onClick="{{ bubbleTap }}" style="{{ bubbleStyle }}">
+          <span class="material-symbols-outlined" style="font-size:22px">travel_explore</span>
+          <sc-if value="{{ showBadge }}" hint-placeholder-val="{{ true }}"><span style="{{ badgeStyle }}">{{ badgeText }}</span></sc-if>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px"><sc-if value="{{ true }}" hint-placeholder-val="{{ true }}"><button class="btn btn-secondary" onClick="{{ toggleCrash }}" style="font-size:12.5px">{{ crashBtn }}</button><button class="btn btn-secondary" onClick="{{ resetBubble }}" style="font-size:12.5px">Reset position</button></sc-if></div>
+    </div>
+
+    <div style="display:grid;gap:0;font-size:14px;line-height:1.62;max-width:56ch">
+      <div style="display:grid;grid-template-columns:26px 1fr;gap:14px;padding:0 0 16px;border-bottom:1px solid var(--color-divider)">
+        <span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">1</span>
+        <div><strong>Resting = half off the edge, 40% opaque.</strong> Two thirds of a 56dp circle hangs outside the viewport, so it covers 18dp of the host app instead of 56. Touch-down restores full size and opacity before the tap resolves, so the target you actually hit is the full 48dp circle.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:26px 1fr;gap:14px;padding:16px 0;border-bottom:1px solid var(--color-divider)">
+        <span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">2</span>
+        <div><strong>Snap is horizontal only.</strong> Vertical position is kept exactly where the finger left it. Snapping to the nearest of four edges would put the bubble over a top app bar or a bottom nav — the two places host apps keep their own controls.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:26px 1fr;gap:14px;padding:16px 0;border-bottom:1px solid var(--color-divider)">
+        <span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">3</span>
+        <div><strong>The badge is the exception to the transparency.</strong> Unread counts render at full opacity on an opaque chip, and the bubble itself goes opaque whenever the count is non-zero. A translucent number is not a number.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:26px 1fr;gap:14px;padding:16px 0">
+        <span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">4</span>
+        <div><strong>A crash is not just red.</strong> The glyph changes to a filled error mark, a slow halo pulses twice, and the badge reads the exception count — three signals, so the state survives a red-blind developer and a greyscale screenshot alike. Try the button under the frame.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="1b" style="scroll-margin-top:16px">
+  <div style="display:flex;align-items:baseline;gap:10px;margin:0 0 4px">
+    <a href="#1b" style="font:500 10.5px 'JetBrains Mono',ui-monospace;padding:3px 7px;background:var(--color-neutral-900);color:var(--color-neutral-100);border-radius:5px;text-decoration:none">1b</a>
+    <h3 style="margin:0;font-size:26px;font-weight:400">Inspector shell · all six sections</h3>
+  </div>
+  <p style="margin:0 0 22px;font-size:14px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Live. Tap a request, expand JSON, open a table, edit a cell, run the query. Rationale on the right follows whatever you are looking at.</p>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:44px;align-items:start">
+
+    <div style="overflow:auto;padding-bottom:8px">
+    <div style="{{ frameStyle }}">
+      <div style="height:30px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font:500 11px 'JetBrains Mono',ui-monospace;color:#7e7a74;border-bottom:1px solid rgba(236,232,226,.08)">
+        <span>{{ frameChrome }}</span><span>9:41</span>
+      </div>
+
+      <div style="flex:none;padding:14px 16px 0;display:flex;align-items:flex-start;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:25px;line-height:1;letter-spacing:-.01em;color:#EDE9E4">KmpInspector</div>
+          <div style="font:400 11px 'JetBrains Mono',ui-monospace;color:#A8A29B;margin-top:5px">{{ sessionLine }}</div>
+        </div>
+        <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace;margin-top:3px">1</span></sc-if>
+        <button onClick="{{ noop }}" style="width:48px;height:48px;flex:none;margin:-12px -12px 0 0;border:0;background:transparent;color:#A8A29B;cursor:pointer;display:grid;place-items:center;border-radius:50%" style-hover="background:rgba(236,232,226,.07);color:#EDE9E4">
+          <span class="material-symbols-outlined" style="font-size:24px">close</span>
+        </button>
+      </div>
+
+      <div style="flex:none;padding:12px 16px 0;display:flex;align-items:center;gap:10px">
+        <div style="flex:1;display:flex;align-items:center;gap:8px;height:48px;padding:0 12px;border:1px solid rgba(236,232,226,.16);border-radius:4px;background:#201F1E">
+          <span class="material-symbols-outlined" style="font-size:19px;color:#A8A29B">search</span>
+          <input value="{{ q }}" onChange="{{ setQ }}" placeholder="{{ searchPlaceholder }}" style="flex:1;min-width:0;border:0;outline:0;background:transparent;color:#EDE9E4;font:400 13px 'JetBrains Mono',ui-monospace">
+        </div>
+        <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">2</span></sc-if>
+      </div>
+
+      <div ref="{{ stripRef }}" style="flex:none;margin-top:12px;border-bottom:1px solid rgba(236,232,226,.13);display:flex;overflow-x:auto;scrollbar-width:none">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+          <button onClick="{{ t.go }}" data-tab="{{ t.label }}" style="{{ t.css }}">
+            <span class="material-symbols-outlined" style="font-size:18px">{{ t.icon }}</span>
+            <span>{{ t.label }}</span>
+            <sc-if value="{{ t.dot }}" hint-placeholder-val="{{ false }}"><span style="width:5px;height:5px;border-radius:50%;background:#E08C7D"></span></sc-if>
+          </button>
+        </sc-for>
+      </div>
+
+      <div style="flex:1;min-height:0;display:flex">
+
+        <sc-if value="{{ showNetList }}" hint-placeholder-val="{{ true }}">
+        <div style="{{ listPaneStyle }}">
+          <div style="flex:none;display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid rgba(236,232,226,.09);overflow-x:auto;scrollbar-width:none">
+            <sc-for list="{{ netFilters }}" as="f" hint-placeholder-count="5"><button onClick="{{ f.go }}" style="{{ f.css }}"><span style="{{ f.inner }}">{{ f.label }}</span></button></sc-for>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">3</span></sc-if>
+          </div>
+          <sc-if value="{{ netEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 28px;gap:14px">
+              <span class="material-symbols-outlined" style="font-size:40px;color:#5C5852">swap_vert</span>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:23px;color:#EDE9E4">No requests captured</div>
+              <div style="font-size:13px;line-height:1.6;color:#A8A29B;max-width:34ch">KmpInspector records traffic through its client interceptor. Add it once, then pull to refresh your app.</div>
+              <div style="width:100%;text-align:left;background:#201F1E;border:1px solid rgba(236,232,226,.13);border-radius:4px;padding:12px 13px;font:400 11.5px/1.7 'JetBrains Mono',ui-monospace;color:#D8D3CC;overflow-x:auto"><span style="color:#A8A29B">HttpClient {</span><br>&nbsp;&nbsp;install(<span style="color:#E1AD66">InspectorPlugin</span>)<br><span style="color:#A8A29B">}</span></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+                <button onClick="{{ noop }}" style="height:48px;padding:0 14px;border:1px solid #E1AD66;border-radius:4px;background:transparent;color:#E1AD66;font-family:'Cormorant Garamond',serif;font-size:14px;cursor:pointer" style-hover="background:rgba(225,173,102,.12)">Copy snippet</button>
+                <button onClick="{{ noop }}" style="height:48px;padding:0 14px;border:1px solid rgba(236,232,226,.2);border-radius:4px;background:transparent;color:#D8D3CC;font-family:'Cormorant Garamond',serif;font-size:14px;cursor:pointer" style-hover="background:rgba(236,232,226,.07)">Ktor &amp; OkHttp docs</button>
+              </div>
+              <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">6</span></sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{ netHasRows }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;min-height:0;overflow-y:auto">
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="7">
+              <button onClick="{{ r.go }}" style="{{ r.css }}">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                  <span style="{{ r.stStyle }}">{{ r.glyph }}</span>
+                  <span style="font:500 12.5px 'JetBrains Mono',ui-monospace;color:{{ r.tone }};font-feature-settings:'tnum';flex:none">{{ r.code }}</span>
+                  <span style="font:500 11px 'JetBrains Mono',ui-monospace;letter-spacing:.04em;color:#A8A29B;flex:none">{{ r.m }}</span>
+                  <span style="flex:1;min-width:0;font:400 12.5px 'JetBrains Mono',ui-monospace;color:#EDE9E4;overflow:hidden;white-space:nowrap;unicode-bidi:plaintext">{{ r.pathShort }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;font:400 11px 'JetBrains Mono',ui-monospace;color:#A8A29B;font-feature-settings:'tnum'">
+                  <span style="flex:none;width:52px">{{ r.msTxt }}</span>
+                  <div style="flex:1;height:2px;background:rgba(236,232,226,.1);border-radius:2px;overflow:hidden"><div style="{{ r.barStyle }}"></div></div>
+                  <span style="flex:none;width:52px;text-align:right">{{ r.size }}</span>
+                  <span style="flex:none;width:64px;text-align:right">{{ r.t }}</span>
+                </div>
+              </button>
+            </sc-for>
+            <div style="padding:14px 12px 26px;text-align:center;font:400 11px 'JetBrains Mono',ui-monospace;color:#6E6A64">{{ rowsFooter }}</div>
+          </div>
+          </sc-if>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showNetDetail }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ detailPaneStyle }}">
+          <div style="flex:none;padding:11px 14px;border-bottom:1px solid rgba(236,232,226,.13);display:flex;align-items:flex-start;gap:8px">
+            <sc-if value="{{ showBack }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ closeDetail }}" style="width:48px;height:48px;flex:none;margin:-10px 0 -10px -10px;border:0;background:transparent;color:#A8A29B;cursor:pointer;display:grid;place-items:center;border-radius:50%" style-hover="background:rgba(236,232,226,.07)"><span class="material-symbols-outlined" style="font-size:22px">arrow_back</span></button>
+            </sc-if>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:7px;font:500 11px 'JetBrains Mono',ui-monospace;letter-spacing:.04em">
+                <span style="color:#A8A29B">{{ sel.m }}</span>
+                <span style="{{ sel.stStyle }}">{{ sel.glyph }}</span>
+                <span style="color:{{ sel.tone }};font-feature-settings:'tnum'">{{ sel.codeLong }}</span>
+              </div>
+              <div style="font:400 12.5px/1.5 'JetBrains Mono',ui-monospace;color:#EDE9E4;margin-top:4px;word-break:break-all">{{ sel.host }}<span style="color:#EDE9E4">{{ sel.path }}</span></div>
+              <div style="font:400 11px 'JetBrains Mono',ui-monospace;color:#A8A29B;margin-top:5px;font-feature-settings:'tnum'">{{ sel.metaLine }}</div>
+            </div>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">7</span></sc-if>
+          </div>
+
+          <div style="flex:none;display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid rgba(236,232,226,.09)">
+            <sc-for list="{{ detTabs }}" as="d" hint-placeholder-count="3"><button onClick="{{ d.go }}" style="{{ d.css }}">{{ d.label }}</button></sc-for>
+            <div style="flex:1"></div>
+            <button onClick="{{ copyCurl }}" title="Copy as cURL" style="{{ curlBtnCss }}" style-hover="border-color:#E1AD66;color:#E1AD66">
+              <span class="material-symbols-outlined" style="font-size:18px">content_copy</span><sc-if value="{{ curlLabelShown }}" hint-placeholder-val="{{ true }}"><span>{{ curlLabel }}</span></sc-if>
+            </button>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">8</span></sc-if>
+          </div>
+
+          <div style="flex:1;min-height:0;overflow:auto">
+            <sc-if value="{{ isJsonTab }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:10px 12px 40px">
+                <div style="display:flex;align-items:center;gap:8px;margin:0 0 8px">
+                  <button onClick="{{ collapseAll }}" style="height:48px;padding:0 11px;border:1px solid rgba(236,232,226,.16);border-radius:4px;background:transparent;color:#A8A29B;font:400 11px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="color:#EDE9E4">collapse all</button>
+                  <button onClick="{{ expandAll }}" style="height:48px;padding:0 11px;border:1px solid rgba(236,232,226,.16);border-radius:4px;background:transparent;color:#A8A29B;font:400 11px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="color:#EDE9E4">expand all</button>
+                  <span style="font:400 10.5px 'JetBrains Mono',ui-monospace;color:#6E6A64">{{ jsonMeta }}</span>
+                  <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">9</span></sc-if>
+                </div>
+                <sc-for list="{{ jsonLines }}" as="l" hint-placeholder-count="12">
+                  <div onClick="{{ l.toggle }}" style="{{ l.rowCss }}">
+                    <span style="{{ l.caretCss }}">{{ l.caret }}</span>
+                    <span style="{{ l.textCss }}"><span style="color:#E1AD66">{{ l.key }}</span><span style="color:#6E6A64">{{ l.sep }}</span><span style="color:{{ l.valTone }}">{{ l.val }}</span><span style="color:#6E6A64">{{ l.tail }}</span></span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isHeadersTab }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:6px 0 40px">
+                <sc-for list="{{ headerGroups }}" as="g" hint-placeholder-count="2">
+                  <div style="padding:12px 12px 4px;font:500 10px 'JetBrains Mono',ui-monospace;letter-spacing:.1em;text-transform:uppercase;color:#E1AD66">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="h" hint-placeholder-count="4">
+                    <div style="display:grid;grid-template-columns:minmax(96px,34%) 1fr;gap:10px;padding:7px 12px;border-bottom:1px solid rgba(236,232,226,.06);font:400 12px/1.5 'JetBrains Mono',ui-monospace">
+                      <span style="color:#A8A29B;word-break:break-all">{{ h.k }}</span>
+                      <span style="color:#EDE9E4;word-break:break-all">{{ h.v }}</span>
+                    </div>
+                  </sc-for>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ showCurl }}" hint-placeholder-val="{{ false }}">
+              <div style="position:sticky;bottom:0;margin:0 12px 12px;background:#2A2827;border:1px solid rgba(236,232,226,.2);border-radius:4px;padding:11px 12px;font:400 11.5px/1.75 'JetBrains Mono',ui-monospace;color:#D8D3CC;white-space:pre-wrap;word-break:break-all">{{ curlText }}</div>
+            </sc-if>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showDbList }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ listPaneStyle }}">
+          <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px;border-bottom:1px solid rgba(236,232,226,.09)">
+            <span style="font:400 11px 'JetBrains Mono',ui-monospace;color:#A8A29B">app.db · SQLDelight · 2.1 MB</span>
+            <button onClick="{{ openSql }}" style="height:48px;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid #E1AD66;border-radius:4px;background:transparent;color:#E1AD66;font:400 11.5px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="background:rgba(225,173,102,.12)"><span class="material-symbols-outlined" style="font-size:16px">terminal</span>SQL</button>
+          </div>
+          <div style="flex:1;min-height:0;overflow-y:auto">
+            <sc-for list="{{ tables }}" as="tb" hint-placeholder-count="7">
+              <button onClick="{{ tb.go }}" style="{{ tb.css }}">
+                <span class="material-symbols-outlined" style="font-size:19px;color:#A8A29B;flex:none">table_chart</span>
+                <span style="flex:1;min-width:0;text-align:left;font:400 13px 'JetBrains Mono',ui-monospace;color:#EDE9E4;overflow:hidden;text-overflow:ellipsis">{{ tb.name }}</span>
+                <span style="font:400 11.5px 'JetBrains Mono',ui-monospace;color:{{ tb.countTone }};font-feature-settings:'tnum';flex:none">{{ tb.rows }}</span>
+                <span class="material-symbols-outlined" style="font-size:18px;color:#5C5852;flex:none">chevron_right</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showDbGrid }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ detailPaneStyle }}">
+          <div style="flex:none;padding:9px 12px;border-bottom:1px solid rgba(236,232,226,.13);display:flex;align-items:center;gap:8px">
+            <sc-if value="{{ showBack }}" hint-placeholder-val="{{ true }}"><button onClick="{{ closeDb }}" style="width:48px;height:48px;flex:none;margin:-8px 0 -8px -10px;border:0;background:transparent;color:#A8A29B;cursor:pointer;display:grid;place-items:center;border-radius:50%" style-hover="background:rgba(236,232,226,.07)"><span class="material-symbols-outlined" style="font-size:22px">arrow_back</span></button></sc-if>
+            <div style="flex:1;min-width:0">
+              <div style="font:500 13px 'JetBrains Mono',ui-monospace;color:#EDE9E4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ gridTitle }}</div>
+              <div style="font:400 10.5px 'JetBrains Mono',ui-monospace;color:#A8A29B;margin-top:3px;font-feature-settings:'tnum'">{{ gridMeta }}</div>
+            </div>
+            <button onClick="{{ toggleSql }}" style="height:48px;flex:none;display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid rgba(236,232,226,.2);border-radius:4px;background:transparent;color:#D8D3CC;font:400 11.5px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="border-color:#E1AD66;color:#E1AD66"><span class="material-symbols-outlined" style="font-size:16px">terminal</span>{{ sqlLabel }}</button>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">10</span></sc-if>
+          </div>
+
+          <sc-if value="{{ sqlOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:none;padding:10px 12px;border-bottom:1px solid rgba(236,232,226,.13);background:#1E1D1C">
+              <textarea value="{{ sql }}" onChange="{{ setSql }}" spellcheck="false" style="width:100%;height:64px;resize:vertical;background:#201F1E;border:1px solid rgba(236,232,226,.16);border-radius:4px;color:#EDE9E4;padding:9px 10px;font:400 12px/1.6 'JetBrains Mono',ui-monospace;outline:0"></textarea>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+                <button onClick="{{ runSql }}" style="height:48px;display:flex;align-items:center;gap:6px;padding:0 12px;border:1px solid #E1AD66;border-radius:4px;background:transparent;color:#E1AD66;font:400 12px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="background:rgba(225,173,102,.12)"><span class="material-symbols-outlined" style="font-size:16px">play_arrow</span>Run</button>
+                <span style="font:400 11px 'JetBrains Mono',ui-monospace;color:{{ sqlMsgTone }}">{{ sqlMsg }}</span>
+                <div style="flex:1"></div>
+                <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">12</span></sc-if>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="flex:1;min-height:0;overflow:auto">
+            <table style="border-collapse:separate;border-spacing:0;font:400 12px 'JetBrains Mono',ui-monospace;min-width:100%">
+              <thead>
+                <tr>
+                  <sc-for list="{{ gridCols }}" as="c" hint-placeholder-count="6">
+                    <th style="{{ c.thCss }}"><span style="color:#EDE9E4">{{ c.name }}</span> <span style="color:#6E6A64;font-size:10px">{{ c.type }}</span></th>
+                  </sc-for>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ gridRows }}" as="row" hint-placeholder-count="8">
+                  <tr>
+                    <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="6">
+                      <td onClick="{{ cell.go }}" style="{{ cell.css }}"><span style="{{ cell.inner }}">{{ cell.text }}</span></td>
+                    </sc-for>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+
+          <sc-if value="{{ cellOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:none;border-top:1px solid #E1AD66;background:#232221;padding:11px 12px 13px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span style="font:400 11px 'JetBrains Mono',ui-monospace;color:#A8A29B">{{ cellPath }}</span>
+                <button onClick="{{ closeCell }}" style="width:48px;height:48px;border:0;background:transparent;color:#A8A29B;cursor:pointer;display:grid;place-items:center;margin:-8px -12px -8px 0"><span class="material-symbols-outlined" style="font-size:20px">close</span></button>
+              </div>
+              <textarea value="{{ cellVal }}" onChange="{{ setCellVal }}" spellcheck="false" style="width:100%;height:76px;resize:vertical;margin-top:7px;background:#1B1A19;border:1px solid rgba(236,232,226,.2);border-radius:4px;color:#EDE9E4;padding:9px 10px;font:400 12px/1.65 'JetBrains Mono',ui-monospace;outline:0"></textarea>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+                <button onClick="{{ saveCell }}" style="height:48px;padding:0 13px;border:1px solid #E1AD66;border-radius:4px;background:transparent;color:#E1AD66;font:400 12px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="background:rgba(225,173,102,.12)">Update row</button>
+                <button onClick="{{ nullCell }}" style="height:48px;padding:0 13px;border:1px solid rgba(236,232,226,.2);border-radius:4px;background:transparent;color:#D8D3CC;font:400 12px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="border-color:#E1AD66;color:#E1AD66">Set NULL</button>
+                <span style="font:400 10.5px 'JetBrains Mono',ui-monospace;color:#6E6A64">{{ cellHint }}</span>
+                <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">11</span></sc-if>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showLogs }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="flex:none;display:flex;align-items:center;gap:4px;padding:2px 10px;border-bottom:1px solid rgba(236,232,226,.09)">
+            <div style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;overflow-x:auto;scrollbar-width:none">
+              <span style="flex:none;font:400 10px 'JetBrains Mono',ui-monospace;letter-spacing:.08em;color:#6E6A64;padding-right:2px">MIN</span>
+              <sc-for list="{{ logLevels }}" as="l" hint-placeholder-count="5"><button onClick="{{ l.go }}" title="{{ l.title }}" style="{{ l.css }}"><span style="{{ l.inner }}">{{ l.label }}</span></button></sc-for>
+              <select value="{{ logTag }}" onChange="{{ setLogTag }}" style="flex:none;height:48px;border-radius:4px;border:1px solid rgba(236,232,226,.18);background:#201F1E;color:#D8D3CC;font:400 11.5px 'JetBrains Mono',ui-monospace;padding:0 6px;margin-left:4px">
+                <sc-for list="{{ logTagOpts }}" as="tg" hint-placeholder-count="4"><option value="{{ tg }}">{{ tg }}</option></sc-for>
+              </select>
+            </div>
+            <button onClick="{{ toggleTail }}" style="{{ tailCss }}"><span style="{{ tailInner }}"><span class="material-symbols-outlined" style="font-size:15px">{{ tailIcon }}</span>{{ tailLabel }}</span></button>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">13</span></sc-if>
+          </div>
+          <div style="flex:1;min-height:0;overflow-y:auto">
+            <sc-for list="{{ logRows }}" as="l" hint-placeholder-count="10">
+              <div style="padding:9px 12px;border-bottom:1px solid rgba(236,232,226,.06)">
+                <div style="display:flex;align-items:center;gap:8px;font:400 10.5px 'JetBrains Mono',ui-monospace;font-feature-settings:'tnum'">
+                  <span style="{{ l.lvlCss }}">{{ l.lvl }}</span>
+                  <span style="color:#A8A29B">{{ l.t }}</span>
+                  <span style="color:{{ l.tone }};letter-spacing:.04em">{{ l.tag }}</span>
+                </div>
+                <div style="{{ l.msgCss }}">{{ l.msg }}</div>
+              </div>
+            </sc-for>
+            <div style="padding:12px;text-align:center;font:400 11px 'JetBrains Mono',ui-monospace;color:#6E6A64">{{ logsFooter }}</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ logsEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 28px;gap:14px">
+            <span class="material-symbols-outlined" style="font-size:40px;color:#5C5852">subject</span>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:23px;color:#EDE9E4">Nothing logged yet</div>
+            <div style="font-size:13px;line-height:1.6;color:#A8A29B;max-width:34ch">KmpInspector mirrors your logger into this buffer. Route your calls through it once and every platform writes here as well as to Logcat, Xcode and stdout.</div>
+            <div style="width:100%;text-align:left;background:#201F1E;border:1px solid rgba(236,232,226,.13);border-radius:4px;padding:12px 13px;font:400 11.5px/1.7 'JetBrains Mono',ui-monospace;color:#D8D3CC;overflow-x:auto"><span style="color:#E1AD66">InspectorLog</span>.i(<span style="color:#93AD8B">"CartStore"</span>, message)</div>
+            <button onClick="{{ noop }}" style="height:48px;padding:0 14px;border:1px solid #E1AD66;border-radius:4px;background:transparent;color:#E1AD66;font-family:'Cormorant Garamond',serif;font-size:14px;cursor:pointer" style-hover="background:rgba(225,173,102,.12)">Copy snippet</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showCrashList }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ listPaneStyle }}">
+          <div style="flex:none;display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid rgba(236,232,226,.09);overflow-x:auto;scrollbar-width:none">
+            <sc-for list="{{ crashFilters }}" as="f" hint-placeholder-count="3"><button onClick="{{ f.go }}" style="{{ f.css }}"><span style="{{ f.inner }}">{{ f.label }}</span></button></sc-for>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">14</span></sc-if>
+          </div>
+          <div style="flex:1;min-height:0;overflow-y:auto">
+            <sc-for list="{{ crashRows }}" as="c" hint-placeholder-count="3">
+              <button onClick="{{ c.go }}" style="{{ c.css }}">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="{{ c.kindCss }}">{{ c.glyph }} {{ c.kind }}</span>
+                  <span style="flex:1"></span>
+                  <sc-if value="{{ c.count }}" hint-placeholder-val="{{ true }}"><span style="{{ c.countCss }}">{{ c.count }}</span></sc-if>
+                  <span style="font:400 10.5px 'JetBrains Mono',ui-monospace;color:#A8A29B;font-feature-settings:'tnum'">{{ c.t }}</span>
+                </div>
+                <div style="font:500 13px 'JetBrains Mono',ui-monospace;color:#EDE9E4;overflow-wrap:anywhere">{{ c.type }}</div>
+                <div style="font:400 12px/1.55 var(--font-body);color:#A8A29B;overflow-wrap:anywhere">{{ c.msg }}</div>
+                <div style="font:400 10.5px 'JetBrains Mono',ui-monospace;color:#6E6A64">{{ c.where }}</div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showCrashDetail }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ detailPaneStyle }}">
+          <div style="flex:none;padding:11px 12px;border-bottom:1px solid rgba(236,232,226,.13);display:flex;align-items:flex-start;gap:8px">
+            <sc-if value="{{ showBack }}" hint-placeholder-val="{{ true }}"><button onClick="{{ closeCrash }}" style="width:48px;height:48px;flex:none;margin:-10px 0 -10px -10px;border:0;background:transparent;color:#A8A29B;cursor:pointer;display:grid;place-items:center;border-radius:50%" style-hover="background:rgba(236,232,226,.07)"><span class="material-symbols-outlined" style="font-size:22px">arrow_back</span></button></sc-if>
+            <div style="flex:1;min-width:0">
+              <div style="font:500 10px 'JetBrains Mono',ui-monospace;letter-spacing:.1em;color:{{ cSel.tone }}">{{ cSel.kind }}</div>
+              <div style="font:500 14px/1.4 'JetBrains Mono',ui-monospace;color:#EDE9E4;margin-top:5px;overflow-wrap:anywhere">{{ cSel.type }}</div>
+              <div style="font:400 13px/1.55 var(--font-body);color:#D8D3CC;margin-top:4px;overflow-wrap:anywhere">{{ cSel.msg }}</div>
+              <div style="font:400 10.5px 'JetBrains Mono',ui-monospace;color:#A8A29B;margin-top:6px;font-feature-settings:'tnum'">{{ cSel.meta }}</div>
+            </div>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">15</span></sc-if>
+          </div>
+          <div style="flex:none;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(236,232,226,.09);flex-wrap:wrap">
+            <button onClick="{{ copyTrace }}" style="height:48px;display:flex;align-items:center;gap:6px;padding:0 11px;border:1px solid #E1AD66;border-radius:4px;background:transparent;color:#E1AD66;font:400 11.5px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="background:rgba(225,173,102,.12)"><span class="material-symbols-outlined" style="font-size:17px">content_copy</span>{{ copyTraceLabel }}</button>
+            <button onClick="{{ shareTrace }}" style="height:48px;display:flex;align-items:center;gap:6px;padding:0 11px;border:1px solid rgba(236,232,226,.2);border-radius:4px;background:transparent;color:#D8D3CC;font:400 11.5px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="border-color:#E1AD66;color:#E1AD66"><span class="material-symbols-outlined" style="font-size:17px">ios_share</span>{{ shareLabel }}</button>
+            <button onClick="{{ toggleFw }}" style="height:48px;display:flex;align-items:center;gap:6px;padding:0 11px;border:1px solid rgba(236,232,226,.2);border-radius:4px;background:transparent;color:#A8A29B;font:400 11.5px 'JetBrains Mono',ui-monospace;cursor:pointer" style-hover="color:#EDE9E4">{{ fwLabel }}</button>
+          </div>
+          <div style="flex:1;min-height:0;overflow-y:auto;padding:10px 12px 40px">
+            <sc-if value="{{ hasCause }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px solid rgba(224,140,125,.4);border-radius:4px;padding:9px 11px;margin-bottom:12px;font:400 11.5px/1.6 'JetBrains Mono',ui-monospace;color:#E08C7D;overflow-wrap:anywhere">{{ causeLine }}</div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font:400 10px 'JetBrains Mono',ui-monospace;letter-spacing:.1em;color:#6E6A64">STACK TRACE</span>
+              <span style="font:400 10px 'JetBrains Mono',ui-monospace;color:#6E6A64">{{ frameCount }}</span>
+              <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">16</span></sc-if>
+            </div>
+            <div style="display:grid;gap:3px">
+              <sc-for list="{{ frames }}" as="f" hint-placeholder-count="6"><div style="{{ f.css }}">{{ f.text }}</div></sc-for>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ crashesEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 28px;gap:14px">
+            <span class="material-symbols-outlined" style="font-size:40px;color:#93AD8B">check_circle</span>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:23px;color:#EDE9E4">No crashes this session</div>
+            <div style="font-size:13px;line-height:1.6;color:#A8A29B;max-width:34ch">Uncaught exceptions are captured automatically once the inspector is installed. To record handled ones too, report them where you catch them.</div>
+            <div style="width:100%;text-align:left;background:#201F1E;border:1px solid rgba(236,232,226,.13);border-radius:4px;padding:12px 13px;font:400 11.5px/1.7 'JetBrains Mono',ui-monospace;color:#D8D3CC;overflow-x:auto"><span style="color:#E1AD66">Inspector</span>.recordNonFatal(e)</div>
+            <div style="font:400 11px 'JetBrains Mono',ui-monospace;color:#6E6A64">Buffer survives process death · cleared on uninstall</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showWorkList }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ listPaneStyle }}">
+          <div style="flex:none;display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(236,232,226,.09)">
+            <span style="font:400 11px 'JetBrains Mono',ui-monospace;color:#A8A29B">WorkManager 2.10 · 5 jobs</span>
+            <div style="flex:1"></div>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">17</span></sc-if>
+          </div>
+          <div style="flex:1;min-height:0;overflow-y:auto">
+            <sc-for list="{{ workRows }}" as="w" hint-placeholder-count="5">
+              <button onClick="{{ w.go }}" style="{{ w.css }}">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="{{ w.stCss }}">{{ w.glyph }} {{ w.word }}</span>
+                  <span style="flex:1"></span>
+                  <span style="font:400 10.5px 'JetBrains Mono',ui-monospace;color:#A8A29B;font-feature-settings:'tnum'">{{ w.attempts }}</span>
+                </div>
+                <div style="font:500 13px 'JetBrains Mono',ui-monospace;color:#EDE9E4;overflow-wrap:anywhere">{{ w.name }}</div>
+                <div style="display:grid;gap:2px;font:400 10.5px 'JetBrains Mono',ui-monospace;color:#6E6A64;font-feature-settings:'tnum'">
+                  <span>last · {{ w.last }}</span>
+                  <span>next · {{ w.next }}</span>
+                </div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showWorkDetail }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ detailPaneStyle }}">
+          <div style="flex:none;padding:11px 12px;border-bottom:1px solid rgba(236,232,226,.13);display:flex;align-items:flex-start;gap:8px">
+            <sc-if value="{{ showBack }}" hint-placeholder-val="{{ true }}"><button onClick="{{ closeWork }}" style="width:48px;height:48px;flex:none;margin:-10px 0 -10px -10px;border:0;background:transparent;color:#A8A29B;cursor:pointer;display:grid;place-items:center;border-radius:50%" style-hover="background:rgba(236,232,226,.07)"><span class="material-symbols-outlined" style="font-size:22px">arrow_back</span></button></sc-if>
+            <div style="flex:1;min-width:0">
+              <div style="font:500 13.5px 'JetBrains Mono',ui-monospace;color:#EDE9E4;overflow-wrap:anywhere">{{ wSel.name }}</div>
+              <div style="margin-top:7px"><span style="{{ wSel.stCss }}">{{ wSel.glyph }} {{ wSel.word }}</span></div>
+              <div style="font:400 10.5px 'JetBrains Mono',ui-monospace;color:#A8A29B;margin-top:7px">{{ wSel.meta }}</div>
+            </div>
+            <sc-if value="{{ ann }}" hint-placeholder-val="{{ true }}"><span style="width:20px;height:20px;flex:none;border-radius:50%;border:1px solid #E1AD66;color:#E1AD66;display:grid;place-items:center;font:500 10px 'JetBrains Mono',ui-monospace">18</span></sc-if>
+          </div>
+          <div style="flex:1;min-height:0;overflow-y:auto;padding:12px 12px 40px;display:grid;gap:16px">
+            <div>
+              <div style="font:400 10px 'JetBrains Mono',ui-monospace;letter-spacing:.1em;color:#6E6A64;margin-bottom:7px">SCHEDULE</div>
+              <div style="display:grid;gap:6px;font:400 11.5px 'JetBrains Mono',ui-monospace;font-feature-settings:'tnum'">
+                <div style="display:flex;gap:10px"><span style="width:44px;flex:none;color:#A8A29B">last</span><span style="color:#EDE9E4">{{ wSel.last }}</span></div>
+                <div style="display:flex;gap:10px"><span style="width:44px;flex:none;color:#A8A29B">next</span><span style="color:#EDE9E4">{{ wSel.next }}</span></div>
+              </div>
+            </div>
+            <div>
+              <div style="font:400 10px 'JetBrains Mono',ui-monospace;letter-spacing:.1em;color:#6E6A64;margin-bottom:7px">CONSTRAINTS</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ wConstraints }}" as="c" hint-placeholder-count="2"><span style="height:24px;padding:0 8px;border:1px solid rgba(236,232,226,.2);border-radius:3px;display:inline-flex;align-items:center;font:400 10.5px 'JetBrains Mono',ui-monospace;color:#D8D3CC">{{ c }}</span></sc-for>
+              </div>
+            </div>
+            <div>
+              <div style="font:400 10px 'JetBrains Mono',ui-monospace;letter-spacing:.1em;color:#6E6A64;margin-bottom:7px">INPUT DATA</div>
+              <div style="border:1px solid rgba(236,232,226,.13);border-radius:4px;overflow:hidden">
+                <sc-for list="{{ wInput }}" as="kv" hint-placeholder-count="2">
+                  <div style="display:grid;grid-template-columns:minmax(90px,38%) 1fr;gap:10px;padding:7px 10px;border-bottom:1px solid rgba(236,232,226,.06);font:400 11.5px/1.5 'JetBrains Mono',ui-monospace">
+                    <span style="color:#A8A29B;overflow-wrap:anywhere">{{ kv.k }}</span><span style="color:#EDE9E4;overflow-wrap:anywhere">{{ kv.v }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <sc-if value="{{ wHasOutput }}" hint-placeholder-val="{{ false }}">
+            <div>
+              <div style="font:400 10px 'JetBrains Mono',ui-monospace;letter-spacing:.1em;color:#6E6A64;margin-bottom:7px">OUTPUT DATA</div>
+              <div style="border:1px solid rgba(236,232,226,.13);border-radius:4px;overflow:hidden">
+                <sc-for list="{{ wOutput }}" as="kv" hint-placeholder-count="2">
+                  <div style="display:grid;grid-template-columns:minmax(90px,38%) 1fr;gap:10px;padding:7px 10px;border-bottom:1px solid rgba(236,232,226,.06);font:400 11.5px/1.5 'JetBrains Mono',ui-monospace">
+                    <span style="color:#A8A29B;overflow-wrap:anywhere">{{ kv.k }}</span><span style="color:#EDE9E4;overflow-wrap:anywhere">{{ kv.v }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            </sc-if>
+            <sc-if value="{{ wHasFailure }}" hint-placeholder-val="{{ false }}">
+            <div>
+              <div style="font:400 10px 'JetBrains Mono',ui-monospace;letter-spacing:.1em;color:{{ wFailureTone }};margin-bottom:7px">{{ wFailureTitle }}</div>
+              <div style="border:1px solid rgba(236,232,226,.16);border-left:2px solid {{ wFailureTone }};border-radius:4px;padding:10px 11px;font:400 11.5px/1.7 'JetBrains Mono',ui-monospace;color:#D8D3CC;overflow-wrap:anywhere">{{ wFailure }}</div>
+            </div>
+            </sc-if>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ workEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 28px;gap:14px">
+            <span class="material-symbols-outlined" style="font-size:40px;color:#5C5852">work_history</span>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:23px;color:#EDE9E4">No work scheduled</div>
+            <div style="font-size:13px;line-height:1.6;color:#A8A29B;max-width:34ch">This tab reads WorkManager's own database directly, so nothing needs installing. Enqueue a job and it appears here with its constraints and next run.</div>
+            <div style="width:100%;text-align:left;background:#201F1E;border:1px solid rgba(236,232,226,.13);border-radius:4px;padding:12px 13px;font:400 11.5px/1.7 'JetBrains Mono',ui-monospace;color:#D8D3CC;overflow-x:auto"><span style="color:#E1AD66">WorkManager</span>.getInstance(ctx)<br>&nbsp;&nbsp;.enqueue(syncRequest)</div>
+            <div style="font:400 11px 'JetBrains Mono',ui-monospace;color:#6E6A64">Android only — the tab is absent on iOS and desktop</div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+    </div>
+
+    <div style="font-size:14px;line-height:1.62">
+      <div style="font-family:var(--font-heading);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700);padding-bottom:10px;border-bottom:1px solid var(--color-divider)">Why it is like this</div>
+
+      <sc-if value="{{ noteShell }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">1</span><div><strong>Header carries the session, not a logo.</strong> Process, build variant and capture uptime are the first things a developer checks against, and they make screenshots self-documenting. Close is a 48dp target in the thumb-reachable corner on the phone, top-right on desktop.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">2</span><div><strong>Search is scoped and says so.</strong> The placeholder names the active tab, so the field never lies about its reach. Typing filters immediately — no submit — because every dataset here is local and small.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">T</span><div><strong>Tabs scroll rather than wrap or collapse.</strong> Five or six sections will not fit 380px, and a "more" menu hides exactly the section you need. Icon plus label keeps them recognisable at a glance, and selecting a tab scrolls it into view so the gold underline is never off-screen. Background Work only exists when the platform is Android — switch platform above and watch it leave.</div></div>
+      </sc-if>
+
+      <sc-if value="{{ noteNetList }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">3</span><div><strong>Filters are chips, not a menu.</strong> Errors-only is the most-used view in any network log; it should be one tap, permanently visible, with its count on the chip. Every chip, level letter and toggle in the inspector draws a 32dp pill inside a 48dp hit area — the chrome stays quiet, the target passes. In Compose that is <code style="font-family:'JetBrains Mono',ui-monospace;font-size:12px">minimumInteractiveComponentSize</code> or explicit padding on the clickable, not a bigger shape.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">4</span><div><strong>Two lines per row, six facts.</strong> One line cannot hold method, path, status, duration, size and time at 380px without truncating all of them. Line one identifies the call, line two measures it. Rows are 64dp, above the 48dp minimum.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">5</span><div><strong>Status is a glyph, a number and a colour.</strong> A bordered mark — check, recycle, bang, cross — sits next to the literal code, so the state reads in greyscale and to a colour-blind eye. Paths truncate from the left with a leading ellipsis, since the tail is the part that differs; the budget grows with the pane.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">6</span><div><strong>The empty state contains the fix.</strong> Set Data to "First run" above: the panel names the plugin, shows the two lines of setup, and offers to copy them. An empty list that only says "nothing here" wastes the one moment the developer is looking for instructions.</div></div>
+      </sc-if>
+
+      <sc-if value="{{ noteNetDetail }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">7</span><div><strong>The URL wraps; it never scrolls sideways.</strong> Full host and path break across lines in mono. Below them, one tabular line holds sent size, received size, duration, protocol and time — the numbers you quote in a bug report.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">8</span><div><strong>Copy-as-cURL is peer to the tabs, not buried.</strong> It is the single most-used action in a network inspector. Tapping it reveals the exact command in a pinned strip so you can see what went to the clipboard before pasting it into a terminal.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">9</span><div><strong>JSON collapses by node, and arrays collapse by default past the first item.</strong> Whole-row tap targets are 36dp tall with the caret at the left; keys take the accent, strings a sage, numbers gold, null a dimmed italic. Collapsed nodes keep their child count, which is often all you needed.</div></div>
+      </sc-if>
+
+      <sc-if value="{{ noteDb }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">10</span><div><strong>Header row and first column both freeze.</strong> Scrolling right in a wide table is useless if you lose which row you are on, so the primary key stays pinned while the rest slides. Column type sits under the name in small grey — it decides how a value should be read.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">11</span><div><strong>Three awkward values, three treatments.</strong> NULL is a dimmed italic keyword, never an empty cell. A BLOB shows type and byte size, not mojibake. Long text clips to one line with an ellipsis and opens in full in the editor — tap any cell to see it. Editing is a sheet, not an inline field, because a phone keyboard would cover the grid.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">12</span><div><strong>SQL results land in the same grid.</strong> One presentation for browsing and querying means one component to build and one thing to learn. Tap SQL in the header, edit the statement, Run. Errors report above the grid, and the previous result stays on screen.</div></div>
+      </sc-if>
+
+      <sc-if value="{{ noteLogs }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">13</span><div><strong>Level is a floor, not a set of checkboxes.</strong> Five independent toggles is five taps to answer "show me warnings and worse". Tapping W means W and E; the letters below the floor grey out so the exclusion is visible. Letters, not colours, name the level.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">L</span><div><strong>Metadata above, message below, nothing sideways.</strong> Level, time and tag ride a compact first line; the message wraps freely underneath in mono with <code style="font-family:'JetBrains Mono',ui-monospace;font-size:12px">overflow-wrap:anywhere</code>, so a 300-character warning or a raw JSON error body stays readable without a horizontal scrollbar. Try the ImageLoader warning.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">L</span><div><strong>Tailing is a state you can see, and search does not stop it.</strong> The pill reads Tailing or Paused rather than showing an ambiguous icon; the footer says whether the buffer is live or frozen at a timestamp. Tag filter is a native select because tag lists grow past what chips can hold. The pill is pinned outside the scrolling filter row, so it is reachable at 380px without discovering a sideways scroll.</div></div>
+      </sc-if>
+
+      <sc-if value="{{ noteCrash }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">14</span><div><strong>Fatal and non-fatal are one list with a filter, not two lists.</strong> Order in time is what tells you a handled exception preceded the crash. The FATAL / CAUGHT badge carries a glyph and a word, so severity never rests on red versus amber, and repeats collapse into a ×count chip.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">15</span><div><strong>Type, message and thread before the trace.</strong> The exception class sets in mono, the message in the body face — it is prose and reads faster that way. Any <em>Caused by</em> gets its own bordered line above the trace, because the root cause is usually the answer.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">16</span><div><strong>App frames are pulled left and marked; framework frames are indented and dimmed.</strong> Three signals again — border, tint, brightness — so the frames you can act on are findable in a greyscale screenshot. Frames wrap rather than scroll, and framework noise can be hidden entirely. Copy and Share sit at the top, where you reach for them after reading.</div></div>
+      </sc-if>
+
+      <sc-if value="{{ noteWork }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">17</span><div><strong>State first, name second, timings third.</strong> The question is almost always "did it run, and when does it run again", so each row leads with a glyph-plus-word state badge, then the worker name, then last and next run as a two-line tabular pair. Attempt count sits opposite the badge, since attempts only matter when something failed.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">18</span><div><strong>Detail is four labelled blocks in read order.</strong> Schedule, constraints as chips reading like the enum values they are, then input and output data as key–value tables, then the failure reason with its own accent rule. Output is omitted rather than shown empty when a job has not produced any. Open SyncOrdersWorker for the failed case and ExportAnalyticsWorker for a cancellation.</div></div>
+        <div style="display:grid;grid-template-columns:26px 1fr;gap:13px;padding:15px 0;border-bottom:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);display:grid;place-items:center;font:500 11px 'JetBrains Mono',ui-monospace;margin-top:2px">W</span><div><strong>The tab does not exist off Android.</strong> Switch Platform above: rather than showing an empty or disabled section on iOS and desktop, the tab is absent, so the tab bar always reflects what the platform can actually report.</div></div>
+      </sc-if>
+
+      <div style="padding:15px 0 0;font-size:13px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Switch Width above to see the master–detail change: at 380 detail replaces the list, at 768 a 300dp list sits beside it, at 1440 the list is fixed and the detail pane takes the rest.</div>
+    </div>
+
+  </div>
+</div>
+
+<p style="margin:40px 0 0;padding-top:18px;border-top:1px solid var(--color-divider);font-size:13px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Try next: "show me the light theme" · "the network row is too dense, drop response size" · "add a filter for app frames only in Crashes" · "make the whole thing tweakable"</p>
+
+</section>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:2400}}">
+const T = {txt:'#EDE9E4', dim:'#A8A29B', faint:'#6E6A64', line:'rgba(236,232,226,.13)',
+  gold:'#E1AD66', ok:'#93AD8B', bad:'#E08C7D', warn:'#E1AD66'};
+
+const REQ = [
+  {m:'GET', host:'https://api.example-shop.com', path:'/v2/products?category=denim&page=1', st:200, ms:142, size:'18.4 kB', sent:'0 B', t:'12:04:31.882', proto:'h2'},
+  {m:'POST', host:'https://api.example-shop.com', path:'/v2/cart/items', st:201, ms:389, size:'612 B', sent:'184 B', t:'12:04:29.104', proto:'h2'},
+  {m:'GET', host:'https://cdn.example-shop.com', path:'/v2/products/8821/reviews', st:304, ms:41, size:'0 B', sent:'0 B', t:'12:04:22.550', proto:'h2'},
+  {m:'PATCH', host:'https://api.example-shop.com', path:'/v2/cart/items/4410', st:409, ms:220, size:'188 B', sent:'96 B', t:'12:04:18.771', proto:'h2'},
+  {m:'GET', host:'https://api.example-shop.com', path:'/v2/recommendations?slot=home_hero', st:500, ms:1204, size:'96 B', sent:'0 B', t:'12:04:11.309', proto:'h2'},
+  {m:'POST', host:'https://auth.example-shop.com', path:'/oauth/token', st:200, ms:96, size:'740 B', sent:'212 B', t:'12:03:58.002', proto:'h1.1'},
+  {m:'GET', host:'https://api.example-shop.com', path:'/v2/orders?status=open', st:null, err:'SocketTimeoutException', ms:15012, size:'—', sent:'0 B', t:'12:03:44.617', proto:'—'},
+  {m:'DELETE', host:'https://api.example-shop.com', path:'/v2/cart/items/4408', st:204, ms:110, size:'0 B', sent:'0 B', t:'12:03:40.221', proto:'h2'}
+];
+
+const BODY = {
+  data: {
+    products: [
+      {id: 8821, sku: 'DNM-SLIM-32-IND', title: 'Slim jean, indigo', price_cents: 12900, currency: 'GBP', in_stock: true, tags: ['denim','slim','indigo'], sizes: [{label:'30', qty: 4}, {label:'32', qty: 0}]},
+      {id: 8822, sku: 'DNM-WIDE-30-RAW', title: 'Wide jean, raw', price_cents: 14500, currency: 'GBP', in_stock: false, tags: ['denim','wide'], sizes: [{label:'30', qty: 11}]}
+    ],
+    page: {next_cursor: 'eyJvIjoyNH0', has_more: true, total: 96}
+  },
+  meta: {request_id: '01J8Z9K3QF', duration_ms: 142, cache: null, region: 'eu-west-2'}
+};
+
+const HEADERS = [
+  {title: 'Request', items: [
+    {k:'Accept', v:'application/json'},
+    {k:'Authorization', v:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…'},
+    {k:'User-Agent', v:'ExampleShop/4.2.0 (Android 14; Pixel 8)'},
+    {k:'X-Request-Id', v:'01J8Z9K3QF'}
+  ]},
+  {title: 'Response', items: [
+    {k:'content-type', v:'application/json; charset=utf-8'},
+    {k:'content-encoding', v:'gzip'},
+    {k:'cache-control', v:'private, max-age=60'},
+    {k:'x-served-by', v:'edge-lhr-04'}
+  ]}
+];
+
+const TABLES = [
+  {name:'orders', rows:1284}, {name:'order_items', rows:4903}, {name:'products', rows:812},
+  {name:'cart_items', rows:7}, {name:'users', rows:3}, {name:'sync_queue', rows:0}, {name:'kv_cache', rows:41}
+];
+
+const COLS = [
+  {name:'id', type:'INTEGER PK', w:64},
+  {name:'order_id', type:'INTEGER', w:88},
+  {name:'sku', type:'TEXT', w:150},
+  {name:'qty', type:'INTEGER', w:56},
+  {name:'unit_cents', type:'INTEGER', w:96},
+  {name:'discount_code', type:'TEXT NULL', w:120},
+  {name:'note', type:'TEXT', w:210},
+  {name:'thumb', type:'BLOB', w:120}
+];
+
+const LONG = 'Customer asked for the parcel to be left with the neighbour at number 14 if nobody answers, and to text on arrival rather than ring the bell because of the dog.';
+const GRID = [
+  [4410, 1284, 'DNM-SLIM-32-IND', 1, 12900, null, LONG, {blob: 12441}],
+  [4411, 1284, 'TEE-CREW-M-WHT', 3, 2200, 'WELCOME10', 'Gift wrap.', {blob: 8102}],
+  [4412, 1283, 'DNM-WIDE-30-RAW', 1, 14500, null, '', {blob: 0}],
+  [4413, 1283, 'SOCK-3PK-BLK', 2, 1500, 'FREESHIP', 'Second attempt after failed delivery.', {blob: 9330}],
+  [4414, 1281, 'JKT-DENIM-L-IND', 1, 24900, null, LONG, {blob: 15887}],
+  [4415, 1280, 'BELT-LTHR-34-BRN', 1, 5900, 'STAFF25', 'Staff purchase, receipt required.', {blob: 7415}],
+  [4416, 1279, 'CAP-6PNL-OS-NVY', 4, 1900, null, '', {blob: 0}],
+  [4417, 1278, 'DNM-SLIM-30-BLK', 1, 12900, 'WELCOME10', 'Exchange for 4402.', {blob: 11020}]
+];
+
+const SQL_RESULT = {
+  cols: [{name:'order_id', type:'INTEGER', w:96},{name:'items', type:'INTEGER', w:72},{name:'total_cents', type:'INTEGER', w:112},{name:'placed_at', type:'TEXT', w:180}],
+  rows: [[1284, 4, 19500, '2026-08-31T12:03:58Z'],[1283, 2, 16000, '2026-08-30T18:41:02Z'],[1281, 1, 24900, '2026-08-29T09:12:44Z'],[1280, 1, 5900, '2026-08-28T20:05:19Z']]
+};
+
+const LEVELS = ['V', 'D', 'I', 'W', 'E'];
+const LEVEL_NAME = {V: 'Verbose', D: 'Debug', I: 'Info', W: 'Warn', E: 'Error'};
+const LOGS = [
+  {t:'12:04:31.884', lvl:'D', tag:'Network', msg:'<-- 200 https://api.example-shop.com/v2/products?category=denim&page=1 (142ms, 18.4kB)'},
+  {t:'12:04:31.741', lvl:'V', tag:'Compose', msg:'recompose ProductGrid: 24 items, skipped 18'},
+  {t:'12:04:30.902', lvl:'I', tag:'CartStore', msg:'cart mutated: 3 lines, subtotal 19500 GBP'},
+  {t:'12:04:29.510', lvl:'W', tag:'ImageLoader', msg:'Bitmap decoded at 2048x2048 for a 320dp slot — request an explicit size or this will thrash the memory cache on low-end devices and cause visible jank while scrolling the grid.'},
+  {t:'12:04:29.104', lvl:'D', tag:'Network', msg:'--> POST /v2/cart/items (184-byte body)'},
+  {t:'12:04:26.330', lvl:'E', tag:'SyncWorker', msg:'Sync attempt 3 failed: HTTP 500 from /v2/recommendations; backing off 30s'},
+  {t:'12:04:24.118', lvl:'I', tag:'Analytics', msg:'queued event view_product{id=8821} (queue depth 12)'},
+  {t:'12:04:22.551', lvl:'D', tag:'Network', msg:'<-- 304 /v2/products/8821/reviews (41ms, cached)'},
+  {t:'12:04:20.004', lvl:'V', tag:'Compose', msg:'measure pass 4.1ms, layout 0.9ms, draw 2.2ms'},
+  {t:'12:04:18.772', lvl:'W', tag:'CartStore', msg:'409 on PATCH /v2/cart/items/4410 — server quantity 2, local 1; local wins'},
+  {t:'12:04:11.312', lvl:'E', tag:'Network', msg:'500 Server Error /v2/recommendations?slot=home_hero: {"error":"upstream_timeout","request_id":"01J8Z9K3QF"}'},
+  {t:'12:03:58.003', lvl:'I', tag:'Auth', msg:'token refreshed, expires in 3600s'},
+  {t:'12:03:44.620', lvl:'E', tag:'Network', msg:'SocketTimeoutException after 15012ms on GET /v2/orders?status=open'},
+  {t:'12:03:40.222', lvl:'D', tag:'Network', msg:'<-- 204 DELETE /v2/cart/items/4408 (110ms)'},
+  {t:'12:03:37.900', lvl:'I', tag:'Startup', msg:'cold start 812ms (process 214ms, first frame 598ms)'}
+];
+
+const CRASHES = [
+  {fatal: true, type: 'IllegalStateException', msg: 'Cart checkout requested with an empty basket', t: '12:04:39.201', count: 1,
+   thread: 'main', where: 'CheckoutViewModel.kt:118',
+   frames: [
+     {app: true, text: 'com.example.shop.checkout.CheckoutViewModel.submit(CheckoutViewModel.kt:118)'},
+     {app: true, text: 'com.example.shop.checkout.CheckoutScreen$onSubmit$1.invoke(CheckoutScreen.kt:74)'},
+     {app: false, text: 'androidx.compose.foundation.ClickableNode$onPointerEvent$1.invokeSuspend(Clickable.kt:987)'},
+     {app: false, text: 'kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)'},
+     {app: false, text: 'android.os.Handler.handleCallback(Handler.java:958)'},
+     {app: false, text: 'android.app.ActivityThread.main(ActivityThread.java:8501)'}
+   ],
+   cause: {type: 'None', text: ''}},
+  {fatal: false, type: 'JsonConvertException', msg: 'Illegal input: expected numeric literal for "price_cents", found string', t: '12:04:11.318', count: 7,
+   thread: 'DefaultDispatcher-worker-3', where: 'ProductDto.kt:31',
+   frames: [
+     {app: true, text: 'com.example.shop.data.dto.ProductDto$$serializer.deserialize(ProductDto.kt:31)'},
+     {app: true, text: 'com.example.shop.data.ProductRepository.load(ProductRepository.kt:66)'},
+     {app: false, text: 'io.ktor.serialization.kotlinx.KotlinxSerializationConverter.deserialize(KotlinxSerializationConverter.kt:82)'},
+     {app: false, text: 'io.ktor.client.plugins.contentnegotiation.ContentNegotiation$Plugin.transform(ContentNegotiation.kt:191)'},
+     {app: false, text: 'kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:113)'}
+   ],
+   cause: {type: 'NumberFormatException', text: 'For input string: "12,900"'}},
+  {fatal: false, type: 'NullPointerException', msg: 'thumbnailUrl was null for product 8822', t: '12:03:52.774', count: 2,
+   thread: 'main', where: 'ProductCard.kt:44',
+   frames: [
+     {app: true, text: 'com.example.shop.ui.ProductCard.Thumbnail(ProductCard.kt:44)'},
+     {app: false, text: 'androidx.compose.runtime.ComposerImpl.recompose(Composer.kt:3510)'},
+     {app: false, text: 'androidx.compose.ui.platform.AndroidComposeView.dispatchDraw(AndroidComposeView.kt:1402)'}
+   ],
+   cause: {type: 'None', text: ''}}
+];
+
+const WORK = [
+  {name: 'SyncOrdersWorker', tag: 'sync', state: 'failed', attempts: 3, constraints: ['NETWORK: CONNECTED', 'BATTERY_NOT_LOW'],
+   last: '12:04:26 (2 min ago)', next: '12:34:26 (backoff, exponential 30s)', id: '9f2c-4d81',
+   input: [['since_cursor', '"eyJvIjoyNH0"'], ['full_refresh', 'false']], output: [['error_code', '500'], ['retryable', 'true']],
+   failure: 'HTTP 500 from /v2/recommendations after 3 attempts. Result.retry() returned; exponential backoff 30s \u2192 60s \u2192 120s.'},
+  {name: 'UploadReceiptsWorker', tag: 'upload', state: 'running', attempts: 1, constraints: ['NETWORK: UNMETERED', 'STORAGE_NOT_LOW'],
+   last: 'started 12:04:35', next: '\u2014 (running)', id: '4a10-b7e2',
+   input: [['receipt_ids', '[4410, 4411, 4413]'], ['compress', 'true']], output: [], failure: ''},
+  {name: 'PruneImageCacheWorker', tag: 'maintenance', state: 'succeeded', attempts: 1, constraints: ['IDLE', 'CHARGING'],
+   last: '11:58:02 (6 min ago)', next: '18:00:00 (periodic, 6h)', id: '77bd-2f09',
+   input: [['max_bytes', '52428800']], output: [['freed_bytes', '18874368'], ['files_removed', '214']], failure: ''},
+  {name: 'RefreshTokenWorker', tag: 'auth', state: 'enqueued', attempts: 0, constraints: ['NETWORK: CONNECTED'],
+   last: '\u2014 (never run)', next: '12:53:58 (periodic, 50m)', id: 'c301-9a4f',
+   input: [['reason', '"scheduled"']], output: [], failure: ''},
+  {name: 'ExportAnalyticsWorker', tag: 'analytics', state: 'cancelled', attempts: 1, constraints: ['NETWORK: CONNECTED'],
+   last: '11:41:19 (23 min ago)', next: '\u2014 (cancelled by tag)', id: '5e88-01cc',
+   input: [['batch_size', '500']], output: [], failure: 'Cancelled: WorkManager.cancelAllWorkByTag("analytics") called from SettingsScreen.kt:212.'}
+];
+
+const WORK_STATE = {
+  enqueued: {glyph: '\u25CB', word: 'Enqueued', tone: '#A8A29B'},
+  running: {glyph: '\u25D4', word: 'Running', tone: '#E1AD66'},
+  succeeded: {glyph: '\u2713', word: 'Succeeded', tone: '#93AD8B'},
+  failed: {glyph: '\u2715', word: 'Failed', tone: '#E08C7D'},
+  cancelled: {glyph: '\u2298', word: 'Cancelled', tone: '#6E6A64'}
+};
+
+class Component extends DCLogic {
+  state = {
+    w: 380, plat: 'Android', empty: false, ann: true,
+    tab: 'Network', q: '', filter: 'All', sel: null, detTab: 'Response',
+    collapsed: {'data.products.1': true, 'data.products.0.sizes': true},
+    curl: false, dbTable: null, sqlOpen: false, sql: 'select order_id, count(*) items, sum(unit_cents) total_cents, placed_at\nfrom order_items join orders using (order_id)\ngroup by order_id order by placed_at desc;',
+    sqlRan: false, sqlErr: '', cell: null, cellVal: '', grid: GRID.map(r => r.slice()),
+    logMin: 0, logTag: 'All tags', tail: true,
+    crashSel: null, crashFatal: 'All', hideFw: false, workSel: null, copied: '',
+    bx: null, by: 300, dragging: false, crash: false, unread: 12
+  };
+
+  seg = (active) => 'height:36px;padding:0 12px;border:1px solid ' + (active ? 'var(--color-accent)' : 'var(--color-divider)') +
+    ';border-radius:4px;background:' + (active ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent') +
+    ';color:' + (active ? 'var(--color-accent-700)' : 'var(--color-text)') +
+    ';font-family:var(--font-heading);font-weight:600;font-size:13px;cursor:pointer;font-feature-settings:"tnum"';
+
+  opts = (list, key) => list.map(o => ({label: o.label, css: this.seg(this.state[key] === o.v),
+    go: () => this.setState({[key]: o.v, sel: null, dbTable: null, cell: null})}));
+
+  statusOf(r) {
+    if (r.st === null) return {code: 'ERR', codeLong: 'ERR · ' + r.err, glyph: '\u2715', tone: T.bad};
+    if (r.st < 300) return {code: r.st, codeLong: r.st + ' OK', glyph: '\u2713', tone: T.ok};
+    if (r.st < 400) return {code: r.st, codeLong: r.st + ' Not Modified', glyph: '\u21BB', tone: T.dim};
+    if (r.st < 500) return {code: r.st, codeLong: r.st + ' Conflict', glyph: '!', tone: T.warn};
+    return {code: r.st, codeLong: r.st + ' Server Error', glyph: '\u2715', tone: T.bad};
+  }
+
+  // 48dp outer hit area, 32dp visual pill — the hit-slop pattern, so touch
+  // targets pass without the chrome looking like a toolbar of buttons.
+  // Keep the active tab (and its gold underline) inside the scrollable strip.
+  componentDidUpdate() {
+    if (!this.strip) return;
+    const key = this.state.tab + '|' + this.state.w;
+    if (this._tabKey === key) return;
+    this._tabKey = key;
+    const el = this.strip.querySelector('[data-tab="' + this.state.tab + '"]');
+    if (!el) return;
+    const max = Math.max(0, this.strip.scrollWidth - this.strip.clientWidth);
+    this.strip.scrollLeft = Math.max(0, Math.min(el.offsetLeft - 16, max));
+  }
+
+  slop(extra) { return 'flex:none;height:48px;padding:0 3px;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;' + (extra || ''); }
+  pill(on, tone) {
+    return 'height:32px;padding:0 11px;border-radius:16px;display:inline-flex;align-items:center;gap:6px;font:400 11.5px "JetBrains Mono",ui-monospace;' +
+      'border:1px solid ' + (on ? (tone || T.gold) : 'rgba(236,232,226,.18)') + ';' +
+      'background:' + (on ? 'rgba(225,173,102,.14)' : 'transparent') + ';color:' + (on ? (tone || T.gold) : T.dim);
+  }
+
+  stStyle(tone) {
+    return 'flex:none;width:18px;height:18px;border-radius:50%;border:1px solid ' + tone + ';color:' + tone +
+      ';display:grid;place-items:center;font-size:10px;line-height:1;font-family:"JetBrains Mono",ui-monospace';
+  }
+
+  msTxt(ms) { return ms >= 1000 ? (ms / 1000).toFixed(1) + ' s' : ms + ' ms'; }
+
+  filtered() {
+    const s = this.state;
+    const q = s.q.trim().toLowerCase();
+    return REQ.filter(r => {
+      const st = this.statusOf(r);
+      if (s.filter === 'Errors' && !(r.st === null || r.st >= 400)) return false;
+      if (s.filter === 'Slow' && r.ms < 1000) return false;
+      if (s.filter === 'POST/PATCH' && !['POST', 'PATCH', 'DELETE'].includes(r.m)) return false;
+      if (q && !(r.path + ' ' + r.m + ' ' + st.code).toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+
+  tree() {
+    const out = [];
+    const walk = (node, key, path, depth, last) => {
+      const isObj = node !== null && typeof node === 'object' && !(node instanceof Array);
+      const isArr = node instanceof Array;
+      if (isObj || isArr) {
+        const keys = isArr ? node.map((_, i) => i) : Object.keys(node);
+        const col = !!this.state.collapsed[path];
+        out.push({path, depth, key: key === null ? '' : (isArr ? key : '"' + key + '"'),
+          sep: key === null ? '' : ': ', branch: true, collapsed: col,
+          val: (isArr ? '[' : '{') + (col ? ' \u2026 ' + keys.length + ' ' + (isArr ? 'items' : 'keys') + ' ' + (isArr ? ']' : '}') : ''),
+          tail: col && !last ? ',' : '', valTone: T.faint});
+        if (!col) {
+          keys.forEach((k, i) => walk(node[k], k, path ? path + '.' + k : String(k), depth + 1, i === keys.length - 1));
+          out.push({path: path + '/close', depth, key: '', sep: '', branch: false, close: true,
+            val: isArr ? ']' : '}', tail: last ? '' : ',', valTone: T.faint});
+        }
+        return;
+      }
+      let val, tone = T.txt;
+      if (node === null) { val = 'null'; tone = T.faint; }
+      else if (typeof node === 'string') { val = '"' + node + '"'; tone = T.ok; }
+      else if (typeof node === 'boolean') { val = String(node); tone = T.gold; }
+      else { val = String(node); tone = T.gold; }
+      out.push({path, depth, key: typeof key === 'number' ? '' : '"' + key + '"',
+        sep: typeof key === 'number' ? '' : ': ', val, valTone: tone, tail: last ? '' : ','});
+    };
+    walk(BODY, null, '', 0, true);
+    return out;
+  }
+
+  allPaths(node, path, acc) {
+    if (node !== null && typeof node === 'object') {
+      if (path) acc.push(path);
+      const keys = node instanceof Array ? node.map((_, i) => i) : Object.keys(node);
+      keys.forEach(k => this.allPaths(node[k], path ? path + '.' + k : String(k), acc));
+    }
+    return acc;
+  }
+
+  // ── bubble ────────────────────────────────────────────────────────────
+  bubbleGeo() {
+    const W = 340, H = 540; // the host-app frame is a fixed size; no measuring needed
+    const s = this.state;
+    const x = s.bx === null ? W - 56 : s.bx;
+    return {W, H, x, y: Math.max(40, Math.min(H - 96, s.by))};
+  }
+
+  onDown = (e) => {
+    e.preventDefault();
+    const g = this.bubbleGeo();
+    this.setState({dragging: true, bx: g.x, by: g.y});
+    const move = (ev) => {
+      const r = this.box.getBoundingClientRect();
+      this.setState({bx: Math.max(-14, Math.min(r.width - 42, ev.clientX - r.left - 28)),
+        by: Math.max(40, Math.min(r.height - 96, ev.clientY - r.top - 28))});
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      const r = this.box.getBoundingClientRect();
+      const cx = (this.state.bx || 0) + 28;
+      this.setState({dragging: false, bx: cx < r.width / 2 ? -18 : r.width - 38});
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  renderVals() {
+    const s = this.state;
+    const split = s.w >= 768;
+    const rowsAll = this.filtered();
+    const errCount = REQ.filter(r => r.st === null || r.st >= 400).length;
+    const sel = s.sel !== null ? REQ[s.sel] : null;
+    const selSt = sel ? this.statusOf(sel) : null;
+
+    const tabDefs = [
+      {label: 'Network', icon: 'swap_vert'}, {label: 'Database', icon: 'table_chart'},
+      {label: 'Background Work', icon: 'work_history', android: true},
+      {label: 'Logs', icon: 'subject'}, {label: 'Crashes', icon: 'error', dot: true}
+    ].filter(t => !t.android || s.plat === 'Android');
+
+    const isNet = s.tab === 'Network', isDb = s.tab === 'Database';
+    const showNetDetail = isNet && s.sel !== null;
+    const showDbGrid = isDb && s.dbTable !== null;
+    const netEmpty = isNet && s.empty;
+
+    const g = this.bubbleGeo();
+    const alert = s.crash;
+    const active = s.dragging;
+    const opacity = active ? 1 : (alert || s.unread > 0 ? 0.92 : 0.4);
+    const shift = active ? 0 : (g.x < g.W / 2 ? -16 : 16);
+
+    const cellInfo = s.cell;
+    const gridCols = s.sqlRan ? SQL_RESULT.cols : COLS;
+    const gridSrc = s.sqlRan ? SQL_RESULT.rows : s.grid;
+
+    const isLogs = s.tab === 'Logs', isCrash = s.tab === 'Crashes', isWork = s.tab === 'Background Work';
+    const lq = s.q.trim().toLowerCase();
+    const logTags = ['All tags'].concat(Array.from(new Set(LOGS.map(l => l.tag))));
+    const logRows = LOGS.filter(l =>
+      LEVELS.indexOf(l.lvl) >= s.logMin &&
+      (s.logTag === 'All tags' || l.tag === s.logTag) &&
+      (!lq || (l.msg + ' ' + l.tag).toLowerCase().includes(lq)));
+    const crashRows = CRASHES.filter(c =>
+      (s.crashFatal === 'All' || (s.crashFatal === 'Fatal') === c.fatal) &&
+      (!lq || (c.type + ' ' + c.msg).toLowerCase().includes(lq)));
+    const cSel = s.crashSel !== null ? CRASHES[s.crashSel] : null;
+    const workRows = WORK.filter(w => !lq || (w.name + ' ' + w.state + ' ' + w.tag).toLowerCase().includes(lq));
+    const wSel = s.workSel !== null ? WORK[s.workSel] : null;
+    const flash = (key) => { this.setState({copied: key}); setTimeout(() => this.setState({copied: ''}), 1400); };
+
+    const fmt = (v) => {
+      if (v === null) return {text: 'NULL', inner: 'color:' + T.faint + ';font-style:italic'};
+      if (v && typeof v === 'object') return {text: v.blob ? 'BLOB · ' + (v.blob / 1024).toFixed(1) + ' kB' : 'BLOB · empty',
+        inner: 'color:' + T.dim + ';border:1px solid rgba(236,232,226,.18);border-radius:3px;padding:1px 5px;font-size:10.5px'};
+      if (v === '') return {text: '\u2014', inner: 'color:' + T.faint};
+      return {text: String(v), inner: 'color:' + T.txt + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block'};
+    };
+
+    return {
+      noop: () => {},
+      ann: s.ann,
+      widthOpts: this.opts([{label:'380 phone',v:380},{label:'768 tablet',v:768},{label:'1440 desktop',v:1440}], 'w'),
+      platOpts: this.opts([{label:'Android',v:'Android'},{label:'iOS',v:'iOS'},{label:'Desktop',v:'Desktop'}], 'plat'),
+      dataOpts: this.opts([{label:'Populated',v:false},{label:'First run',v:true}], 'empty'),
+      annOpts: this.opts([{label:'On',v:true},{label:'Off',v:false}], 'ann'),
+
+      // bubble
+      bubbleBox: (el) => { if (el) this.box = el; },
+      bubbleDown: this.onDown,
+      bubbleTap: () => this.setState({unread: 0, crash: false}),
+      bubbleStyle: 'position:absolute;left:' + g.x + 'px;top:' + g.y + 'px;width:56px;height:56px;border-radius:50%;' +
+        'transform:translateX(' + shift + 'px) scale(' + (active ? 1.06 : 1) + ');opacity:' + opacity + ';' +
+        'background:' + (alert ? '#5A2A24' : '#232221') + ';border:1px solid ' + (alert ? T.bad : T.gold) + ';color:' + (alert ? T.bad : T.gold) + ';' +
+        'display:grid;place-items:center;cursor:grab;touch-action:none;box-shadow:0 4px 14px rgba(0,0,0,.3);' +
+        'transition:' + (active ? 'none' : 'left .22s cubic-bezier(.2,.8,.2,1),transform .18s,opacity .18s') + ';' +
+        (alert ? 'animation:pulse 2.4s ease-out 2;' : ''),
+      showBadge: alert || s.unread > 0,
+      badgeStyle: 'position:absolute;top:-5px;' + (g.x < g.W / 2 ? 'right:-5px' : 'left:-5px') +
+        ';min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:' + (alert ? T.bad : T.gold) +
+        ';color:#1B1A19;font:700 11px "JetBrains Mono",ui-monospace;display:grid;place-items:center;opacity:1;font-feature-settings:"tnum"',
+      badgeText: alert ? '1' : String(s.unread),
+      crashBtn: s.crash ? 'Clear the exception' : 'Capture an exception',
+      toggleCrash: () => this.setState({crash: !s.crash, unread: s.crash ? 12 : s.unread}),
+      resetBubble: () => this.setState({bx: null, by: 300, unread: 12, crash: false}),
+
+      // frame
+      frameStyle: 'width:' + s.w + 'px;height:' + (s.w === 380 ? 780 : s.w === 768 ? 900 : 820) + 'px;flex:none;' +
+        'display:flex;flex-direction:column;background:#191817;color:' + T.txt + ';overflow:hidden;' +
+        'border:1px solid rgba(0,0,0,.35);border-radius:' + (s.w === 380 ? '26px' : '10px') + ';box-shadow:var(--shadow-lg)',
+      frameChrome: s.w === 380 ? (s.plat === 'iOS' ? 'iPhone 15 · 380 × 780' : 'Pixel 8 · 380 × 780') : s.w === 768 ? 'Tablet · 768 × 900' : 'Desktop · 1440 × 820',
+      sessionLine: 'com.example.shop · debug · ' + (s.plat === 'Android' ? 'Android 14' : s.plat === 'iOS' ? 'iOS 18.2' : 'JVM 21') + ' · 04:12 captured',
+      q: s.q,
+      setQ: (e) => this.setState({q: e.target.value}),
+      searchPlaceholder: 'Search ' + s.tab.toLowerCase() + '\u2026',
+      stripRef: (el) => { this.strip = el; },
+      tabs: tabDefs.map(t => ({label: t.label, icon: t.icon, dot: !!t.dot,
+        css: 'flex:none;display:flex;align-items:center;gap:6px;height:48px;padding:0 14px;border:0;background:transparent;cursor:pointer;' +
+          'font-family:"Cormorant Garamond",serif;font-size:15px;letter-spacing:.01em;' +
+          'color:' + (s.tab === t.label ? T.gold : T.dim) + ';' +
+          'box-shadow:' + (s.tab === t.label ? 'inset 0 -2px 0 ' + T.gold : 'none'),
+        go: () => this.setState({tab: t.label, sel: null, dbTable: null, cell: null, q: '', crashSel: null, workSel: null})})),
+
+      listPaneStyle: 'flex:' + (split ? 'none' : '1') + ';width:' + (split ? (s.w === 1440 ? '420px' : '300px') : 'auto') +
+        ';min-width:0;display:flex;flex-direction:column;' + (split ? 'border-right:1px solid ' + T.line : ''),
+      detailPaneStyle: 'flex:1;min-width:0;display:flex;flex-direction:column',
+
+      showNetList: isNet && (split || s.sel === null),
+      showNetDetail,
+      netEmpty,
+      netHasRows: isNet && !s.empty,
+      netFilters: [{label:'All \u00b7 ' + REQ.length, v:'All'}, {label:'Errors \u00b7 ' + errCount, v:'Errors'}, {label:'Slow', v:'Slow'}, {label:'Writes', v:'POST/PATCH'}].map(f => ({
+        label: f.label, css: this.slop(), inner: this.pill(s.filter === f.v),
+        go: () => this.setState({filter: f.v})})),
+      rows: rowsAll.map(r => {
+        const st = this.statusOf(r);
+        const i = REQ.indexOf(r);
+        const on = s.sel === i;
+        const cap = split ? (s.w === 1440 ? 48 : 30) : 26;
+        return {m: r.m, path: r.path,
+          pathShort: r.path.length > cap ? '\u2026' + r.path.slice(-(cap - 1)) : r.path,
+          code: st.code, glyph: st.glyph, tone: st.tone,
+          stStyle: this.stStyle(st.tone), msTxt: this.msTxt(r.ms), size: r.size, t: r.t,
+          barStyle: 'height:100%;width:' + Math.min(100, Math.max(3, (r.ms / 1500) * 100)) + '%;background:' + (r.ms > 800 ? T.warn : 'rgba(236,232,226,.35)'),
+          css: 'display:flex;flex-direction:column;gap:7px;width:100%;min-height:64px;padding:11px 12px;border:0;cursor:pointer;text-align:left;' +
+            'background:' + (on ? 'rgba(225,173,102,.09)' : 'transparent') + ';border-bottom:1px solid rgba(236,232,226,.07);' +
+            'box-shadow:' + (on ? 'inset 2px 0 0 ' + T.gold : 'none'),
+          go: () => this.setState({sel: i, detTab: 'Response', curl: false})};
+      }),
+      rowsFooter: rowsAll.length + ' of ' + REQ.length + ' requests \u00b7 capture buffer 200',
+
+      sel: sel ? {m: sel.m, host: sel.host, path: sel.path, glyph: selSt.glyph, tone: selSt.tone,
+        codeLong: selSt.codeLong, stStyle: this.stStyle(selSt.tone),
+        metaLine: '\u2191 ' + sel.sent + '  \u2193 ' + sel.size + '  \u00b7  ' + this.msTxt(sel.ms) + '  \u00b7  ' + sel.proto + '  \u00b7  ' + sel.t} : null,
+      showBack: !split,
+      closeDetail: () => this.setState({sel: null, curl: false}),
+      detTabs: ['Request', 'Response', 'Headers'].map(d => ({label: d,
+        css: 'height:48px;padding:0 12px;border:0;background:transparent;cursor:pointer;font:400 12.5px "JetBrains Mono",ui-monospace;' +
+          'color:' + (s.detTab === d ? T.gold : T.dim) + ';box-shadow:' + (s.detTab === d ? 'inset 0 -2px 0 ' + T.gold : 'none'),
+        go: () => this.setState({detTab: d})})),
+      isJsonTab: s.detTab !== 'Headers',
+      isHeadersTab: s.detTab === 'Headers',
+      headerGroups: HEADERS,
+      jsonMeta: s.detTab === 'Response' ? 'application/json \u00b7 18.4 kB \u00b7 gzip' : 'application/json \u00b7 184 B',
+      jsonLines: this.tree().map(l => ({
+        key: l.key, sep: l.sep, val: l.val, tail: l.tail, valTone: l.valTone,
+        caret: l.branch ? (l.collapsed ? '\u25B8' : '\u25BE') : '',
+        caretCss: 'flex:none;width:14px;color:' + (l.branch ? T.dim : 'transparent') + ';font-size:10px;line-height:20px;text-align:center',
+        rowCss: 'display:flex;align-items:flex-start;gap:2px;min-height:' + (l.branch ? '36px' : '24px') + ';padding:' + (l.branch ? '8px' : '2px') + ' 4px;' +
+          'padding-left:' + (4 + l.depth * 14) + 'px;border-radius:3px;cursor:' + (l.branch ? 'pointer' : 'text'),
+        textCss: 'font:400 12px/1.7 "JetBrains Mono",ui-monospace;word-break:break-all;white-space:pre-wrap',
+        toggle: l.branch ? () => this.setState(st => ({collapsed: Object.assign({}, st.collapsed, {[l.path]: !st.collapsed[l.path]})})) : () => {}
+      })),
+      collapseAll: () => { const acc = {}; this.allPaths(BODY, '', []).forEach(p => acc[p] = true); this.setState({collapsed: acc}); },
+      expandAll: () => this.setState({collapsed: {}}),
+      copyCurl: () => this.setState({curl: !s.curl}),
+      curlLabel: s.curl ? 'cURL shown' : 'Copy as cURL',
+      curlLabelShown: split,
+      curlBtnCss: 'height:48px;' + (split ? 'padding:0 10px;' : 'width:48px;justify-content:center;padding:0;') +
+        'display:flex;align-items:center;gap:6px;border:1px solid rgba(236,232,226,.2);border-radius:4px;' +
+        'background:' + (s.curl ? 'rgba(225,173,102,.14)' : 'transparent') + ';color:' + (s.curl ? T.gold : '#D8D3CC') +
+        ';font:400 11.5px "JetBrains Mono",ui-monospace;cursor:pointer;flex:none',
+      showCurl: s.curl,
+      curlText: sel ? "curl -X " + sel.m + " '" + sel.host + sel.path + "' \\\n  -H 'accept: application/json' \\\n  -H 'authorization: Bearer eyJhbGciOiJIUzI1NiJ9\u2026' \\\n  -H 'user-agent: ExampleShop/4.2.0 (Android 14; Pixel 8)' --compressed" : '',
+
+      // database
+      showDbList: isDb && (split || s.dbTable === null),
+      showDbGrid,
+      openSql: () => this.setState({dbTable: 'order_items', sqlOpen: true}),
+      tables: TABLES.map(t => ({name: t.name, rows: t.rows.toLocaleString() + ' rows',
+        countTone: t.rows === 0 ? T.faint : T.dim,
+        css: 'display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 12px;border:0;cursor:pointer;' +
+          'background:' + (s.dbTable === t.name ? 'rgba(225,173,102,.09)' : 'transparent') + ';border-bottom:1px solid rgba(236,232,226,.07);' +
+          'box-shadow:' + (s.dbTable === t.name ? 'inset 2px 0 0 ' + T.gold : 'none'),
+        go: () => this.setState({dbTable: t.name, sqlRan: false, cell: null})})),
+      closeDb: () => this.setState({dbTable: null, cell: null, sqlOpen: false}),
+      gridTitle: s.sqlRan ? 'Query result' : (s.dbTable || ''),
+      gridMeta: s.sqlRan ? SQL_RESULT.rows.length + ' rows \u00b7 4 columns \u00b7 6 ms' : gridSrc.length + ' of 4,903 rows \u00b7 8 columns \u00b7 read-write',
+      toggleSql: () => this.setState({sqlOpen: !s.sqlOpen}),
+      sqlLabel: s.sqlOpen ? 'Hide SQL' : 'SQL',
+      sqlOpen: s.sqlOpen,
+      sql: s.sql,
+      setSql: (e) => this.setState({sql: e.target.value}),
+      runSql: () => {
+        const bad = !/^\s*(select|with)/i.test(s.sql);
+        this.setState({sqlErr: bad ? 'Read-only editor: statement must begin with SELECT or WITH.' : '', sqlRan: !bad, cell: null});
+      },
+      sqlMsg: s.sqlErr ? s.sqlErr : (s.sqlRan ? 'ok \u00b7 4 rows \u00b7 6 ms' : 'Read-only. SELECT and WITH only.'),
+      sqlMsgTone: s.sqlErr ? T.bad : (s.sqlRan ? T.ok : T.faint),
+
+      gridCols: gridCols.map((c, i) => ({name: c.name, type: c.type,
+        thCss: 'position:sticky;top:0;' + (i === 0 ? 'left:0;z-index:3;' : 'z-index:2;') +
+          'background:#232221;text-align:left;padding:8px 10px;white-space:nowrap;min-width:' + c.w + 'px;' +
+          'border-bottom:1px solid ' + T.line + ';' + (i === 0 ? 'border-right:1px solid ' + T.line + ';' : '') +
+          'font-weight:500;font-size:11px;letter-spacing:.03em'})),
+      gridRows: gridSrc.map((row, ri) => ({cells: row.map((v, ci) => {
+        const f = fmt(v);
+        const on = cellInfo && cellInfo.r === ri && cellInfo.c === ci;
+        return {text: f.text, inner: f.inner + ';max-width:' + (gridCols[ci].w - 20) + 'px',
+          css: 'padding:0 10px;height:48px;max-width:' + gridCols[ci].w + 'px;white-space:nowrap;cursor:pointer;' +
+            'background:' + (on ? 'rgba(225,173,102,.16)' : (ci === 0 ? '#1E1D1C' : 'transparent')) + ';' +
+            (ci === 0 ? 'position:sticky;left:0;z-index:1;border-right:1px solid ' + T.line + ';' : '') +
+            'border-bottom:1px solid rgba(236,232,226,.07);' + (on ? 'box-shadow:inset 0 0 0 1px ' + T.gold + ';' : '') +
+            'font-feature-settings:"tnum"',
+          go: () => this.setState({cell: {r: ri, c: ci}, cellVal: v === null ? '' : (v && typeof v === 'object' ? '<binary \u2014 not editable here>' : String(v))})};
+      })})),
+      cellOpen: !!cellInfo,
+      cellPath: cellInfo ? (s.sqlRan ? 'query result \u00b7 ' : (s.dbTable + ' \u00b7 ')) + gridCols[cellInfo.c].name + ' \u00b7 row ' + (cellInfo.r + 1) + ' \u00b7 ' + gridCols[cellInfo.c].type : '',
+      cellVal: s.cellVal,
+      setCellVal: (e) => this.setState({cellVal: e.target.value}),
+      closeCell: () => this.setState({cell: null}),
+      saveCell: () => {
+        if (!cellInfo || s.sqlRan) { this.setState({cell: null}); return; }
+        const grid = s.grid.map(r => r.slice());
+        grid[cellInfo.r][cellInfo.c] = s.cellVal;
+        this.setState({grid, cell: null});
+      },
+      nullCell: () => {
+        if (!cellInfo || s.sqlRan) return;
+        const grid = s.grid.map(r => r.slice());
+        grid[cellInfo.r][cellInfo.c] = null;
+        this.setState({grid, cell: null});
+      },
+      cellHint: s.sqlRan ? 'Query results are read-only.' : 'Writes go straight to the device database.',
+
+      // ── logs ───────────────────────────────────────────────────────────
+      showLogs: isLogs && !s.empty,
+      logsEmpty: isLogs && s.empty,
+      logLevels: LEVELS.map((l, i) => ({label: l, title: LEVEL_NAME[l] + ' and above',
+        css: this.slop('width:40px'),
+        inner: 'width:32px;height:32px;border-radius:4px;display:grid;place-items:center;font:500 11.5px "JetBrains Mono",ui-monospace;' +
+          'border:1px solid ' + (s.logMin === i ? T.gold : 'rgba(236,232,226,.18)') + ';' +
+          'background:' + (s.logMin === i ? 'rgba(225,173,102,.14)' : 'transparent') + ';' +
+          'color:' + (s.logMin === i ? T.gold : (i < s.logMin ? T.faint : T.dim)),
+        go: () => this.setState({logMin: i})})),
+      logTagOpts: logTags,
+      logTag: s.logTag,
+      setLogTag: (e) => this.setState({logTag: e.target.value}),
+      tailCss: this.slop('padding:0 8px'),
+      tailInner: this.pill(s.tail) + ';padding:0 10px',
+      tailLabel: s.tail ? 'Tailing' : 'Paused',
+      tailIcon: s.tail ? 'pause' : 'play_arrow',
+      toggleTail: () => this.setState({tail: !s.tail}),
+      logRows: logRows.map(l => {
+        const tone = l.lvl === 'E' ? T.bad : l.lvl === 'W' ? T.warn : l.lvl === 'I' ? T.txt : T.dim;
+        return {t: l.t, lvl: l.lvl, tag: l.tag, msg: l.msg, tone,
+          lvlCss: 'flex:none;width:18px;height:18px;border-radius:3px;display:grid;place-items:center;font:500 10px "JetBrains Mono",ui-monospace;' +
+            'border:1px solid ' + tone + ';color:' + tone,
+          msgCss: 'font:400 12px/1.65 "JetBrains Mono",ui-monospace;color:' + (l.lvl === 'V' ? T.dim : T.txt) +
+            ';white-space:pre-wrap;overflow-wrap:anywhere;margin-top:4px'};
+      }),
+      logsFooter: logRows.length + ' of ' + LOGS.length + ' lines \u00b7 ring buffer 2,000 \u00b7 ' + (s.tail ? 'live' : 'paused at 12:04:31'),
+
+      // ── crashes ────────────────────────────────────────────────────────
+      showCrashList: isCrash && !s.empty && (split || s.crashSel === null),
+      showCrashDetail: isCrash && !s.empty && s.crashSel !== null,
+      crashesEmpty: isCrash && s.empty,
+      crashFilters: ['All', 'Fatal', 'Non-fatal'].map(f => ({label: f + (f === 'Fatal' ? ' \u00b7 1' : f === 'Non-fatal' ? ' \u00b7 2' : ' \u00b7 3'),
+        css: this.slop(), inner: this.pill(s.crashFatal === f),
+        go: () => this.setState({crashFatal: f, crashSel: null})})),
+      crashRows: crashRows.map(c => {
+        const i = CRASHES.indexOf(c);
+        const on = s.crashSel === i;
+        const tone = c.fatal ? T.bad : T.warn;
+        return {type: c.type, msg: c.msg, t: c.t, where: c.where,
+          kind: c.fatal ? 'FATAL' : 'CAUGHT', glyph: c.fatal ? '\u2715' : '!',
+          kindCss: 'flex:none;display:flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:3px;' +
+            'border:1px solid ' + tone + ';color:' + tone + ';font:500 9.5px "JetBrains Mono",ui-monospace;letter-spacing:.08em',
+          count: c.count > 1 ? '\u00d7' + c.count : '',
+          countCss: 'flex:none;padding:0 6px;height:20px;border-radius:10px;background:rgba(236,232,226,.1);color:' + T.dim +
+            ';font:500 10px "JetBrains Mono",ui-monospace;display:grid;place-items:center;font-feature-settings:"tnum"',
+          css: 'display:flex;flex-direction:column;gap:6px;width:100%;min-height:72px;padding:12px;border:0;cursor:pointer;text-align:left;' +
+            'background:' + (on ? 'rgba(225,173,102,.09)' : 'transparent') + ';border-bottom:1px solid rgba(236,232,226,.07);' +
+            'box-shadow:' + (on ? 'inset 2px 0 0 ' + T.gold : 'none'),
+          go: () => this.setState({crashSel: i, copied: ''})};
+      }),
+      cSel: cSel ? {type: cSel.type, msg: cSel.msg, t: cSel.t, thread: cSel.thread,
+        kind: cSel.fatal ? 'FATAL \u00b7 app terminated' : 'NON-FATAL \u00b7 caught',
+        tone: cSel.fatal ? T.bad : T.warn,
+        meta: cSel.thread + ' thread \u00b7 ' + cSel.t + (cSel.count > 1 ? ' \u00b7 ' + cSel.count + ' occurrences' : ' \u00b7 first occurrence')} : null,
+      hasCause: !!(cSel && cSel.cause.text),
+      causeLine: cSel && cSel.cause.text ? 'Caused by: ' + cSel.cause.type + ': ' + cSel.cause.text : '',
+      frames: cSel ? cSel.frames.filter(f => f.app || !s.hideFw).map(f => ({text: f.text,
+        css: 'padding:7px 10px 7px ' + (f.app ? '9px' : '10px') + ';border-left:' + (f.app ? '2px solid ' + T.gold : '1px solid rgba(236,232,226,.12)') +
+          ';background:' + (f.app ? 'rgba(225,173,102,.06)' : 'transparent') +
+          ';font:400 11.5px/1.6 "JetBrains Mono",ui-monospace;color:' + (f.app ? T.txt : T.dim) +
+          ';overflow-wrap:anywhere;margin-left:' + (f.app ? '0' : '10px')})) : [],
+      fwLabel: s.hideFw ? 'Show framework frames' : 'Hide framework frames',
+      toggleFw: () => this.setState({hideFw: !s.hideFw}),
+      frameCount: cSel ? cSel.frames.filter(f => f.app).length + ' app \u00b7 ' + cSel.frames.filter(f => !f.app).length + ' framework' : '',
+      closeCrash: () => this.setState({crashSel: null}),
+      copyTrace: () => flash('trace'),
+      copyTraceLabel: s.copied === 'trace' ? 'Copied' : 'Copy trace',
+      shareTrace: () => flash('share'),
+      shareLabel: s.copied === 'share' ? 'Sharing\u2026' : 'Share',
+
+      // ── background work ────────────────────────────────────────────────
+      showWorkList: isWork && !s.empty && (split || s.workSel === null),
+      showWorkDetail: isWork && !s.empty && s.workSel !== null,
+      workEmpty: isWork && s.empty,
+      workRows: workRows.map(w => {
+        const i = WORK.indexOf(w);
+        const on = s.workSel === i;
+        const st = WORK_STATE[w.state];
+        return {name: w.name, word: st.word, glyph: st.glyph, tone: st.tone,
+          stCss: 'flex:none;display:flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:3px;border:1px solid ' + st.tone +
+            ';color:' + st.tone + ';font:500 9.5px "JetBrains Mono",ui-monospace;letter-spacing:.06em',
+          attempts: 'attempt ' + w.attempts + (w.state === 'failed' ? '/3' : ''),
+          last: w.last, next: w.next,
+          css: 'display:flex;flex-direction:column;gap:6px;width:100%;min-height:68px;padding:12px;border:0;cursor:pointer;text-align:left;' +
+            'background:' + (on ? 'rgba(225,173,102,.09)' : 'transparent') + ';border-bottom:1px solid rgba(236,232,226,.07);' +
+            'box-shadow:' + (on ? 'inset 2px 0 0 ' + T.gold : 'none'),
+          go: () => this.setState({workSel: i})};
+      }),
+      wSel: wSel ? {name: wSel.name, word: WORK_STATE[wSel.state].word, glyph: WORK_STATE[wSel.state].glyph,
+        tone: WORK_STATE[wSel.state].tone,
+        stCss: 'display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:3px;border:1px solid ' +
+          WORK_STATE[wSel.state].tone + ';color:' + WORK_STATE[wSel.state].tone + ';font:500 10.5px "JetBrains Mono",ui-monospace;letter-spacing:.06em',
+        meta: 'id ' + wSel.id + ' \u00b7 tag "' + wSel.tag + '" \u00b7 attempt ' + wSel.attempts,
+        last: wSel.last, next: wSel.next} : null,
+      wConstraints: wSel ? wSel.constraints : [],
+      wInput: wSel ? wSel.input.map(p => ({k: p[0], v: p[1]})) : [],
+      wOutput: wSel ? wSel.output.map(p => ({k: p[0], v: p[1]})) : [],
+      wHasOutput: !!(wSel && wSel.output.length),
+      wHasFailure: !!(wSel && wSel.failure),
+      wFailure: wSel ? wSel.failure : '',
+      wFailureTone: wSel && wSel.state === 'cancelled' ? T.dim : T.bad,
+      wFailureTitle: wSel && wSel.state === 'cancelled' ? 'Cancellation reason' : 'Failure reason',
+      closeWork: () => this.setState({workSel: null}),
+
+      noteShell: isNet && s.sel === null && !s.empty,
+      noteNetList: isNet && s.sel === null,
+      noteNetDetail: showNetDetail,
+      noteDb: isDb,
+      noteLogs: isLogs,
+      noteCrash: isCrash,
+      noteWork: isWork
+    };
+  }
+}
+
+</script>
+</body>
+</html>

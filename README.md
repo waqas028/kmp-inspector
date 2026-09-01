@@ -22,8 +22,8 @@ dependencies {
 
 ## Usage
 
-Wrap your root composable once. The floating button and the inspector screen come from the library —
-you do not build any of that UI yourself:
+Wrap your root composable once. The bubble and the whole inspector come from the library — you build
+none of that UI yourself:
 
 ```kotlin
 import com.waqas028.kmpinspector.KmpInspector
@@ -35,13 +35,30 @@ setContent {
 }
 ```
 
-That single wrap gives you a draggable magnifier button floating over your app, which opens the
-inspector screen when tapped.
+A draggable bubble floats over your app; tapping it opens a full-screen inspector with five
+sections: **Network, Database, Background Work (Android only), Logs, and Crashes**.
+
+### Feeding it data
+
+The inspector shows what you give it, so it works with whichever HTTP client, database and scheduler
+you already use:
+
+```kotlin
+Inspector.configure(appId = "com.example.shop", variant = "debug")
+
+Inspector.recordRequest(method = "GET", url = url, statusCode = 200, durationMillis = 142)
+InspectorLog.i("CartStore", "Cart restored from disk")
+Inspector.recordNonFatal("JsonDecodingException", message, origin = "ProductMapper.kt:41")
+Inspector.setWork(jobs)
+Inspector.setDatabase(info, tables)
+```
+
+Buffers follow the spec: 200 requests, a 2,000-line log ring.
 
 ### Keeping it out of release builds
 
-The overlay is opt-in by design — it never appears unless you wrap something — but you also want it
-gone in production. Pass your own debug flag:
+The overlay is opt-in — it never appears unless you wrap something — but you also want it gone in
+production:
 
 ```kotlin
 KmpInspector(enabled = BuildConfig.DEBUG) {
@@ -49,8 +66,20 @@ KmpInspector(enabled = BuildConfig.DEBUG) {
 }
 ```
 
-When `enabled` is false the composable renders `content()` directly, so nothing of the overlay
-enters the composition.
+With `enabled = false` the composable renders `content()` directly, so nothing enters the
+composition.
+
+### Responsive layout
+
+One body, three arrangements, switched on available width:
+
+| Width | Arrangement |
+|---|---|
+| < 768dp | Single pane — detail replaces the list, back arrow returns |
+| 768–1439dp | 300dp list pane + hairline + detail, both visible, no back arrow |
+| ≥ 1440dp | 420dp list pane + detail |
+
+Logs is always a single full-width pane; it has no detail view.
 
 ## Sample app
 
@@ -85,9 +114,9 @@ if dropped:
 - `CADisableMinimumFrameDurationOnPhone` in `Info.plist` — Compose for iOS **throws on startup**
   without it, to avoid being silently capped at 60Hz on ProMotion devices.
 
-The **Debug KMP Inspector** button calls `generateFibi()`, `firstElement` and `secondElement` from
-the library. Because those two are `expect`/`actual` values, each platform prints different numbers —
-which is the point: it proves the per-platform `actual` implementations are really being linked in.
+On launch the sample seeds the inspector with fixture data so every section has something to show.
+The **Simulate activity** button records a request and a log line at runtime, so you can watch the
+bubble's unread badge increment and the Logs tail update live.
 
 ## Testing the library in a project before publishing
 
