@@ -42,6 +42,7 @@ import com.waqas028.kmpinspector.presentation.PaneWidth
 import com.waqas028.kmpinspector.presentation.common.EmptyState
 import com.waqas028.kmpinspector.presentation.common.Hairline
 import com.waqas028.kmpinspector.presentation.common.HitTarget
+import com.waqas028.kmpinspector.presentation.common.NoResults
 import com.waqas028.kmpinspector.presentation.common.OutlineChip
 import com.waqas028.kmpinspector.presentation.shell.MasterDetail
 import com.waqas028.kmpinspector.presentation.theme.DebugPalette
@@ -119,6 +120,16 @@ private fun TableList(state: InspectorState, tables: List<DbTable>) {
             }
         }
         Hairline()
+        if (tables.isEmpty()) {
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                NoResults(
+                    message = "No tables match \"${state.query.trim()}\"",
+                    actionLabel = "Clear search",
+                    onAction = { state.query = "" },
+                )
+            }
+            return@Column
+        }
         LazyColumn(Modifier.weight(1f)) {
             items(tables, key = { it.name }) { table ->
                 Row(

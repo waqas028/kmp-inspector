@@ -71,7 +71,14 @@ internal class InspectorState {
     var editingCell by mutableStateOf<CellAddress?>(null)
     var cellDraft by mutableStateOf("")
 
-    var logMinLevel by mutableStateOf(LogLevel.Verbose)
+    /**
+     * Exactly one level, or null for all of them.
+     *
+     * The handoff specified a floor (tapping W meant W and E). Changed to exact match on request:
+     * V/D/I/W/E name one level each, so tapping I shows Info and nothing else. Because there is no
+     * longer a level that means "everything", the row carries an explicit All.
+     */
+    var logLevel by mutableStateOf<LogLevel?>(null)
     var logTag by mutableStateOf<String?>(null)
     var tailing by mutableStateOf(true)
     var pausedAt by mutableStateOf<String?>(null)

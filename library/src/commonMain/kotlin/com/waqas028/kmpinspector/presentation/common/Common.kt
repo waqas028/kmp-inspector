@@ -226,6 +226,40 @@ internal fun EmptyState(
     }
 }
 
+/**
+ * Shown when a filter or search matches nothing.
+ *
+ * Distinct from [EmptyState], which is the first-run case and carries setup instructions. Here the
+ * data exists and the filter is hiding it, so the message names the filter and offers a way out —
+ * a blank pane leaves the developer wondering whether the capture broke.
+ */
+@Composable
+internal fun NoResults(
+    message: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = message,
+                style = InspectorType.mono(12.sp, color = DebugPalette.textDim),
+            )
+            if (actionLabel != null && onAction != null) {
+                HitTarget(onClick = onAction) {
+                    Text(
+                        actionLabel,
+                        style = InspectorType.mono(12.sp, FontWeight.Medium, DebugPalette.accent),
+                    )
+                }
+            }
+        }
+    }
+}
+
 /** Two-column key/value table used by Headers, Input/Output data. */
 @Composable
 internal fun KeyValueRow(key: String, value: String, keyWeight: Float = 0.34f) {

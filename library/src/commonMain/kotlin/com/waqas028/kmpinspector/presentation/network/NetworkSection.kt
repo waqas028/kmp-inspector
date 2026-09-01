@@ -52,6 +52,7 @@ import com.waqas028.kmpinspector.presentation.common.Hairline
 import com.waqas028.kmpinspector.presentation.common.HitTarget
 import com.waqas028.kmpinspector.presentation.common.KeyValueRow
 import com.waqas028.kmpinspector.presentation.common.Kicker
+import com.waqas028.kmpinspector.presentation.common.NoResults
 import com.waqas028.kmpinspector.presentation.common.StatusMark
 import com.waqas028.kmpinspector.presentation.pathBudget
 import com.waqas028.kmpinspector.presentation.shell.MasterDetail
@@ -118,6 +119,18 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
         list = {
             Column(Modifier.fillMaxSize()) {
                 NetworkFilterChips(state, all)
+                if (filtered.isEmpty()) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        NoResults(
+                            message = "No requests match ${state.networkFilter.label.lowercase()}",
+                            actionLabel = "Show all",
+                            onAction = {
+                                state.networkFilter = NetworkFilter.All
+                                state.query = ""
+                            },
+                        )
+                    }
+                } else {
                 LazyColumn(Modifier.weight(1f)) {
                     items(filtered, key = { it.id }) { request ->
                         NetworkRow(
@@ -131,6 +144,7 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
                         )
                         Hairline(color = DebugPalette.lineFaint)
                     }
+                }
                 }
                 Hairline()
                 Text(

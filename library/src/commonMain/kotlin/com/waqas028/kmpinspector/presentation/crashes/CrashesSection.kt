@@ -43,6 +43,7 @@ import com.waqas028.kmpinspector.presentation.common.FilterPill
 import com.waqas028.kmpinspector.presentation.common.Hairline
 import com.waqas028.kmpinspector.presentation.common.HitTarget
 import com.waqas028.kmpinspector.presentation.common.Kicker
+import com.waqas028.kmpinspector.presentation.common.NoResults
 import com.waqas028.kmpinspector.presentation.common.OutlineChip
 import com.waqas028.kmpinspector.presentation.common.StateBadge
 import com.waqas028.kmpinspector.presentation.shell.MasterDetail
@@ -106,6 +107,18 @@ internal fun CrashesSection(state: InspectorState, pane: PaneWidth) {
                         )
                     }
                 }
+                if (filtered.isEmpty()) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        NoResults(
+                            message = "No ${state.crashFilter.label.lowercase()} exceptions",
+                            actionLabel = "Show all",
+                            onAction = {
+                                state.crashFilter = CrashFilter.All
+                                state.query = ""
+                            },
+                        )
+                    }
+                } else {
                 LazyColumn(Modifier.weight(1f)) {
                     items(filtered, key = { it.id }) { crash ->
                         CrashRow(crash, crash.id == state.selectedCrashId) {
@@ -113,6 +126,7 @@ internal fun CrashesSection(state: InspectorState, pane: PaneWidth) {
                         }
                         Hairline(color = DebugPalette.lineFaint)
                     }
+                }
                 }
             }
         },

@@ -38,6 +38,7 @@ import com.waqas028.kmpinspector.domain.model.LogLevel
 import com.waqas028.kmpinspector.presentation.InspectorState
 import com.waqas028.kmpinspector.presentation.common.EmptyState
 import com.waqas028.kmpinspector.presentation.common.Hairline
+import com.waqas028.kmpinspector.presentation.common.NoResults
 import com.waqas028.kmpinspector.presentation.common.HitTarget
 import com.waqas028.kmpinspector.presentation.theme.DebugPalette
 import com.waqas028.kmpinspector.presentation.theme.Glyph
@@ -70,7 +71,7 @@ internal fun LogsSection(state: InspectorState) {
     val tags = remember(all.size) { all.map { it.tag }.distinct().sorted() }
     val q = state.query.trim()
     val filtered = all.filter { line ->
-        line.level.ordinal >= state.logMinLevel.ordinal &&
+        (state.logLevel == null || line.level == state.logLevel) &&
             (state.logTag == null || line.tag == state.logTag) &&
             (q.isEmpty() || line.message.contains(q, true) || line.tag.contains(q, true))
     }
@@ -94,17 +95,35 @@ internal fun LogsSection(state: InspectorState) {
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    "MIN",
+                    "LEVEL",
                     modifier = Modifier.padding(horizontal = 6.dp),
                     style = InspectorType.kicker,
                 )
-                LevelFloor(state)
+                LevelPicker(state)
                 TagFilter(state, tags)
             }
             TailingToggle(state)
         }
         Hairline()
 
+        if (filtered.isEmpty()) {
+            val q = state.query.trim()
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                NoResults(
+                    message = buildString {
+                        append("No ").append(state.logLevel?.name ?: "matching").append(" logs")
+                        state.logTag?.let { append(" tagged ").append(it) }
+                        if (q.isNotEmpty()) append(" matching \"").append(q).append("\"")
+                    },
+                    actionLabel = "Reset filters",
+                    onAction = {
+                        state.logLevel = null
+                        state.logTag = null
+                        state.query = ""
+                    },
+                )
+            }
+        } else {
         LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             items(filtered, key = { it.id }) { line ->
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -146,6 +165,7 @@ internal fun LogsSection(state: InspectorState) {
                 Hairline(color = DebugPalette.lineFaint)
             }
         }
+        }
 
         Hairline()
         Text(
@@ -160,40 +180,69 @@ internal fun LogsSection(state: InspectorState) {
 }
 
 /**
- * A floor, not five checkboxes: tapping W means W and E. Letters below the floor grey out, so the
- * exclusion is visible, and letters — not colours — name the level.
+ * One level at a time, or All. Letters — not colours — name the level, so it reads in greyscale.
+ *
+ * Tapping the active letter again clears back to All: without that there would be no way to see
+ * every level once a filter had been applied.
  */
 @Composable
-private fun LevelFloor(state: InspectorState) {
+private fun LevelPicker(state: InspectorState) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        HitTarget(onClick = { state.logLevel = null }, minSize = 40.dp) {
+            LevelChip(label = "All", selected = state.logLevel == null, wide = true)
+        }
         LogLevel.entries.forEach { level ->
-            val included = level.ordinal >= state.logMinLevel.ordinal
-            HitTarget(onClick = { state.logMinLevel = level }, minSize = 40.dp) {
-                Box(
-                    Modifier
-                        .size(32.dp)
-                        .background(
-                            if (level == state.logMinLevel) DebugPalette.activePillFill else Color.Transparent,
-                            RoundedCornerShape(4.dp),
-                        )
-                        .border(
-                            1.dp,
-                            if (level == state.logMinLevel) DebugPalette.accent else DebugPalette.line,
-                            RoundedCornerShape(4.dp),
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        level.letter.toString(),
-                        style = InspectorType.mono(
-                            12.sp,
-                            FontWeight.Medium,
-                            if (included) DebugPalette.text else DebugPalette.textFaint,
-                        ),
-                    )
-                }
+            HitTarget(
+                onClick = { state.logLevel = if (state.logLevel == level) null else level },
+                minSize = 40.dp,
+            ) {
+                LevelChip(
+                    label = level.letter.toString(),
+                    selected = state.logLevel == level,
+                    // Everything unselected is excluded, so it dims — the exclusion stays visible.
+                    dimmed = state.logLevel != null && state.logLevel != level,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun LevelChip(
+    label: String,
+    selected: Boolean,
+    dimmed: Boolean = false,
+    wide: Boolean = false,
+) {
+    Box(
+        modifier = Modifier
+            .height(32.dp)
+            .then(if (wide) Modifier else Modifier.width(32.dp))
+            .background(
+                if (selected) DebugPalette.activePillFill else Color.Transparent,
+                RoundedCornerShape(4.dp),
+            )
+            .border(
+                1.dp,
+                if (selected) DebugPalette.accent else DebugPalette.line,
+                RoundedCornerShape(4.dp),
+            )
+            .then(if (wide) Modifier.padding(horizontal = 10.dp) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = InspectorType.mono(
+                12.sp,
+                FontWeight.Medium,
+                when {
+                    selected -> DebugPalette.accent
+                    dimmed -> DebugPalette.textFaint
+                    else -> DebugPalette.text
+                },
+            ),
+            maxLines = 1,
+        )
     }
 }
 
