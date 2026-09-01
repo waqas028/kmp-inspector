@@ -3,6 +3,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
@@ -28,11 +30,14 @@ kotlin {
     }
     iosArm64()
     iosSimulatorArm64()
-    linuxX64()
 
     sourceSets {
         commonMain.dependencies {
-            //put your multiplatform dependencies here
+            // api, because KmpInspector's signature is @Composable and callers need the runtime.
+            api(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
         }
 
         commonTest.dependencies {
@@ -44,7 +49,12 @@ kotlin {
 mavenPublishing {
     publishToMavenCentral()
 
-    signAllPublications()
+    // Maven Central requires signed artifacts, but publishToMavenLocal does not — and signing
+    // there fails outright without a GPG key, which breaks local verification. Sign only when a
+    // key is actually configured; CI supplies one via ORG_GRADLE_PROJECT_signingInMemoryKey.
+    if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+        signAllPublications()
+    }
 
     coordinates(group.toString(), "kmp-inspector", version.toString())
 

@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.waqas028.kmpinspector.KmpInspector
 import com.waqas028.kmpinspector.firstElement
 import com.waqas028.kmpinspector.generateFibi
 import com.waqas028.kmpinspector.secondElement
@@ -25,31 +26,38 @@ import com.waqas028.kmpinspector.secondElement
 @Composable
 fun App() {
     MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-            ) {
-                Text(
-                    text = "KmpInspector Sample",
-                    style = MaterialTheme.typography.headlineSmall,
-                )
+        KmpInspector {
+            SampleContent()
+        }
+    }
+}
 
-                var report by remember { mutableStateOf<String?>(null) }
+@Composable
+private fun SampleContent() {
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        ) {
+            Text(
+                text = "KmpInspector Sample",
+                style = MaterialTheme.typography.headlineSmall,
+            )
 
-                Button(onClick = { report = inspect() }) {
-                    Text("Debug KMP Inspector")
-                }
+            var report by remember { mutableStateOf<String?>(null) }
 
-                report?.let {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = it,
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
+            Button(onClick = { report = inspect() }) {
+                Text("Debug KMP Inspector")
+            }
+
+            report?.let {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = it,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             }
         }

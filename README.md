@@ -5,12 +5,11 @@ A [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) library
 
 ## Supported targets
 
-| Target      | Source set                     |
-|-------------|--------------------------------|
-| Android     | `androidMain`                  |
-| iOS         | `iosArm64`, `iosSimulatorArm64` |
-| JVM         | `jvmMain`                      |
-| Linux x64   | `linuxX64Main`                 |
+| Target  | Source set                      |
+|---------|---------------------------------|
+| Android | `androidMain`                   |
+| iOS     | `iosArm64`, `iosSimulatorArm64` |
+| Desktop | `jvmMain`                       |
 
 ## Installation
 
@@ -23,15 +22,35 @@ dependencies {
 
 ## Usage
 
-The library currently ships the template's sample API — a Fibonacci sequence seeded with
-platform-provided numbers — under the `com.waqas028.kmpinspector` package. Replace it with the real
-API.
+Wrap your root composable once. The floating button and the inspector screen come from the library —
+you do not build any of that UI yourself:
 
 ```kotlin
-import com.waqas028.kmpinspector.generateFibi
+import com.waqas028.kmpinspector.KmpInspector
 
-val firstThree = generateFibi().take(3).toList()
+setContent {
+    KmpInspector {
+        MyApp()
+    }
+}
 ```
+
+That single wrap gives you a draggable magnifier button floating over your app, which opens the
+inspector screen when tapped.
+
+### Keeping it out of release builds
+
+The overlay is opt-in by design — it never appears unless you wrap something — but you also want it
+gone in production. Pass your own debug flag:
+
+```kotlin
+KmpInspector(enabled = BuildConfig.DEBUG) {
+    MyApp()
+}
+```
+
+When `enabled` is false the composable renders `content()` directly, so nothing of the overlay
+enters the composition.
 
 ## Sample app
 
@@ -130,8 +149,11 @@ implementation("com.waqas028:kmp-inspector:1.0.0")
 
 Two gotchas worth knowing:
 
-- **`publishToMavenLocal` skips signing**, so it works without your GPG key set up. A successful
-  local publish therefore does *not* prove the signed Central publish will succeed.
+- **Signing is skipped locally only because the build makes it conditional.** `signAllPublications()`
+  runs only when a `signingInMemoryKey` property is present (CI supplies it). Called
+  unconditionally, `publishToMavenLocal` fails with *"no configured signatory"* and cannot be
+  worked around by excluding the sign tasks — the publications still reference the `.asc` files.
+  Either way, a successful local publish does *not* prove the signed Central publish will succeed.
 - Because the version is a fixed `1.0.0`, Gradle caches it. After republishing, the consumer may
   keep the stale copy — use a `1.0.0-SNAPSHOT` version while iterating, or run the consumer build
   with `--refresh-dependencies`.
@@ -160,10 +182,9 @@ project dependency. This is the best option for testing against an existing app 
 ./gradlew build
 ```
 
-Per-target tests: `jvmTest`, `iosSimulatorArm64Test`, `linuxX64Test`, `testAndroidHostTest`.
-Note that `linuxX64Test` only runs on a Linux host, and `iosSimulatorArm64Test` only on macOS —
-the GitHub Actions workflow in [.github/workflows/gradle.yml](.github/workflows/gradle.yml) fans
-these out across runners.
+Per-target tests: `jvmTest`, `iosSimulatorArm64Test`, `testAndroidHostTest`. Note that
+`iosSimulatorArm64Test` only runs on macOS — the GitHub Actions workflow in
+[.github/workflows/gradle.yml](.github/workflows/gradle.yml) fans these out across runners.
 
 ## Publishing
 
