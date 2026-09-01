@@ -13,5 +13,7 @@ internal object SampleApp {
     // Exactly one Ktor engine is on each platform's classpath, so it resolves itself.
     private val client: HttpClient by lazy { HttpClient() }
 
-    val repository: NewsRepository by lazy { NewsRepository(database, SpaceflightApi(client)) }
+    val api: SpaceflightApi by lazy { SpaceflightApi(client) }
+
+    val repository: NewsRepository by lazy { NewsRepository(database, api) }
 }

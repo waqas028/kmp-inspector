@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 fun App() {
     var state by remember { mutableStateOf(NewsUiState(loading = true)) }
     val scope = rememberCoroutineScope()
+    var developerOpen by remember { mutableStateOf(false) }
 
     suspend fun load(isRefresh: Boolean) {
         val repository = SampleApp.repository
@@ -53,6 +54,9 @@ fun App() {
     LaunchedEffect(Unit) {
         Inspector.configure(appId = "com.waqas028.kmpinspector.sample", variant = "debug")
 
+        // Opt in to capturing fatal crashes. Frames starting with this prefix are marked as ours.
+        Inspector.installCrashHandler(appPackagePrefix = "com.waqas028")
+
         // Enqueue before observing: reporting first would look at an empty queue and the
         // Background Work tab would stay blank until something else refreshed it.
         startNewsRefresh(this)
@@ -63,10 +67,15 @@ fun App() {
 
     MaterialTheme {
         KmpInspector {
-            NewsScreen(
-                state = state,
-                onRefresh = { scope.launch { load(isRefresh = true) } },
-            )
+            if (developerOpen) {
+                DeveloperScreen(onBack = { developerOpen = false })
+            } else {
+                NewsScreen(
+                    state = state,
+                    onRefresh = { scope.launch { load(isRefresh = true) } },
+                    onOpenDeveloper = { developerOpen = true },
+                )
+            }
         }
     }
 }

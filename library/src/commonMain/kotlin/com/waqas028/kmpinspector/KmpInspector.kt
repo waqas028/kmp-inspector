@@ -44,6 +44,9 @@ fun KmpInspector(
     // Install the bundled mono face before any inspector UI composes.
     ProvideInspectorFonts()
 
+    // Crashes written by a previous run are loaded once, before anything reads the list.
+    remember { InspectorStore.restoreCrashes() }
+
     var open by remember { mutableStateOf(false) }
     val state = rememberInspectorState()
 

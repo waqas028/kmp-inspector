@@ -65,6 +65,34 @@ internal object InspectorStore {
         crashes.add(0, record)
         unreadCount++
         if (record.fatal) unreadCrashes++
+        persistCrashes()
+    }
+
+    /**
+     * Crashes are the one buffer that has to outlive the process: the app is gone by the time you
+     * could look at it, so the record is only useful on the next launch.
+     */
+    fun persistCrashes() {
+        runCatching { CrashFile.write(CrashCodec.encode(crashes)) }
+    }
+
+    /** Called once at startup, before any UI reads the list. */
+    fun restoreCrashes() {
+        if (restored) return
+        restored = true
+        val stored = runCatching { CrashFile.read()?.let(CrashCodec::decode) }.getOrNull().orEmpty()
+        if (stored.isEmpty()) return
+        crashes.addAll(stored)
+        // Restored crashes are unread by definition - nobody has seen them yet.
+        unreadCrashes += stored.count { it.fatal }
+    }
+
+    private var restored = false
+
+    fun clearCrashes() {
+        crashes.clear()
+        unreadCrashes = 0
+        runCatching { CrashFile.clear() }
     }
 
     /** Cleared when the Crashes tab is opened, so the bubble returns to its resting look. */
@@ -91,6 +119,7 @@ internal object InspectorStore {
         database = null
         unreadCount = 0
         unreadCrashes = 0
+        runCatching { CrashFile.clear() }
     }
 
     private fun <T> trim(list: MutableList<T>, capacity: Int) {

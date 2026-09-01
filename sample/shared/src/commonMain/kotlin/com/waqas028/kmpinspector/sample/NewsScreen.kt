@@ -26,7 +26,11 @@ import androidx.compose.ui.unit.dp
 import com.waqas028.kmpinspector.sample.data.NewsUiState
 
 @Composable
-internal fun NewsScreen(state: NewsUiState, onRefresh: () -> Unit) {
+internal fun NewsScreen(
+    state: NewsUiState,
+    onRefresh: () -> Unit,
+    onOpenDeveloper: () -> Unit,
+) {
     Surface(modifier = Modifier.fillMaxSize()) {
         // The sample owns its own insets; the inspector handles its own when open.
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -41,6 +45,7 @@ internal fun NewsScreen(state: NewsUiState, onRefresh: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
+                TextButton(onClick = onOpenDeveloper) { Text("Dev") }
                 TextButton(onClick = onRefresh, enabled = !state.loading) {
                     Text(if (state.loading) "Loading…" else "Refresh")
                 }

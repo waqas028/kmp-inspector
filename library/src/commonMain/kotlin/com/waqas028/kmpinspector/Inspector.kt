@@ -2,6 +2,7 @@ package com.waqas028.kmpinspector
 
 import com.waqas028.kmpinspector.data.InspectorPlatform
 import com.waqas028.kmpinspector.data.InspectorStore
+import com.waqas028.kmpinspector.data.installPlatformCrashHandler
 import com.waqas028.kmpinspector.domain.model.CrashRecord
 import com.waqas028.kmpinspector.domain.model.DbInfo
 import com.waqas028.kmpinspector.domain.model.DbTable
@@ -23,6 +24,26 @@ object Inspector {
         InspectorStore.appId = appId
         InspectorStore.variant = variant
     }
+
+    /**
+     * Captures uncaught exceptions so a fatal crash is still there after the app restarts.
+     *
+     * Opt-in rather than automatic: installing a global handler is a decision a host app should make
+     * knowingly, and the handler always delegates to whatever was installed before it, so an
+     * existing crash reporter keeps working and the app still crashes normally.
+     *
+     * [appPackagePrefix] marks which stack frames are yours — frames starting with it are pulled
+     * left and highlighted, everything else is treated as framework.
+     *
+     * Not everything is catchable. On iOS this covers unhandled *Kotlin* exceptions only;
+     * Objective-C/Swift exceptions and hard signals (SIGSEGV, SIGABRT) never reach it.
+     */
+    fun installCrashHandler(appPackagePrefix: String? = null) {
+        installPlatformCrashHandler(appPackagePrefix)
+    }
+
+    /** Drops persisted crashes as well as the in-memory list. */
+    fun clearCrashes() = InspectorStore.clearCrashes()
 
     fun recordRequest(request: NetworkRequest) = InspectorStore.addRequest(request)
 

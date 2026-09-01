@@ -41,6 +41,54 @@ internal class SpaceflightApi(
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
 
+    /**
+     * Fires a request purely so it shows up in the inspector. Used by the developer screen to
+     * produce a 4xx or a transport failure on demand.
+     */
+    suspend fun probe(url: String) {
+        val started = TimeSource.Monotonic.markNow()
+        try {
+            val response = client.get(url)
+            val body = response.bodyAsText()
+            Inspector.recordRequest(
+                NetworkRequest(
+                    id = url.hashCode().toLong() + response.status.value,
+                    method = "GET",
+                    url = url,
+                    statusCode = response.status.value,
+                    reasonPhrase = response.status.description,
+                    durationMillis = started.elapsedNow().inWholeMilliseconds,
+                    requestBytes = 0,
+                    responseBytes = body.length.toLong(),
+                    timestampMillis = nowMillis(),
+                    contentType = "application/json",
+                    responseBody = body.take(2000),
+                ),
+            )
+            InspectorLog.w("DevTools", "Probe returned ${response.status.value} for $url")
+        } catch (e: Exception) {
+            Inspector.recordRequest(
+                NetworkRequest(
+                    id = url.hashCode().toLong(),
+                    method = "GET",
+                    url = url,
+                    statusCode = null,
+                    durationMillis = started.elapsedNow().inWholeMilliseconds,
+                    requestBytes = 0,
+                    responseBytes = 0,
+                    timestampMillis = nowMillis(),
+                    errorText = "${e::class.simpleName}: ${e.message}",
+                ),
+            )
+            Inspector.recordNonFatal(
+                exceptionType = e::class.simpleName ?: "Exception",
+                message = e.message ?: "Request failed",
+                origin = "DeveloperScreen.kt",
+            )
+            InspectorLog.e("DevTools", "Probe failed for $url: ${e.message}")
+        }
+    }
+
     suspend fun latestArticles(limit: Int = 25): List<ArticleDto> {
         val url = "$BASE_URL?limit=$limit"
         val started = TimeSource.Monotonic.markNow()
