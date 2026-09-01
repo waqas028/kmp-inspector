@@ -127,10 +127,7 @@ private fun InspectorHeader(onClose: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(
-                "KmpInspector",
-                style = InspectorType.mono(21.sp, FontWeight.Normal, DebugPalette.text),
-            )
+            Text("KmpInspector", style = InspectorType.title)
             Text(
                 session,
                 style = InspectorType.mono(11.sp, color = DebugPalette.textDim, tabular = true),
@@ -211,8 +208,7 @@ private fun InspectorTabs(state: InspectorState) {
                     Text(
                         tab.label,
                         modifier = Modifier.padding(start = 6.dp),
-                        style = InspectorType.mono(
-                            size = 13.sp,
+                        style = InspectorType.tabLabel.copy(
                             color = if (selected) DebugPalette.accent else DebugPalette.textDim,
                         ),
                         maxLines = 1,

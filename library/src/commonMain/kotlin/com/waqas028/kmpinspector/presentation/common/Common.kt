@@ -196,14 +196,10 @@ internal fun EmptyState(
             modifier = Modifier.widthIn(max = 360.dp),
         ) {
             InspectorIcon(glyph, contentDescription = null, size = 40.dp, tint = glyphTint)
-            Text(title, style = InspectorType.mono(17.sp, FontWeight.Normal, DebugPalette.text))
+            Text(title, style = InspectorType.title.copy(fontSize = 20.sp))
             Text(
                 text = sentence,
-                style = InspectorType.mono(
-                    size = 12.sp,
-                    color = DebugPalette.textDim,
-                    lineHeight = 19.sp,
-                ),
+                style = InspectorType.prose(),
             )
             Box(
                 Modifier

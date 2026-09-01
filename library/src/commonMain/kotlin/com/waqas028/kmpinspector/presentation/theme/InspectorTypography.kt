@@ -56,6 +56,35 @@ internal object InspectorType {
         fontFeatureSettings = if (tabular) TABULAR else null,
     )
 
+    /**
+     * The proportional roles. The prototype drew these in Cormorant Garamond and Lora; the handoff
+     * says to substitute the M3 type scale's default family and not to ship a serif, so they use
+     * the platform default. Mono is for technical values only — prose reads faster proportional.
+     */
+    val title get() = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontSize = 25.sp,
+        fontWeight = FontWeight.Normal,
+        color = DebugPalette.text,
+    )
+
+    val tabLabel get() = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Normal,
+    )
+
+    /** Crash messages and empty-state copy: 13sp at a 1.6 line-height. */
+    fun prose(
+        color: androidx.compose.ui.graphics.Color = DebugPalette.textDim,
+        size: TextUnit = 13.sp,
+    ) = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontSize = size,
+        lineHeight = size * 1.6f,
+        color = color,
+    )
+
     /** Kicker / section label: mono 10sp, wide tracking, uppercase, `textFaint`. */
     val kicker get() = mono(10.sp, FontWeight.Medium, DebugPalette.textFaint, tracking = 0.1.em)
 

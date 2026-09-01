@@ -165,7 +165,7 @@ private fun CrashRow(crash: CrashRecord, selected: Boolean, onClick: () -> Unit)
             Text(
                 crash.message,
                 modifier = Modifier.padding(top = 2.dp),
-                style = InspectorType.mono(12.sp, color = DebugPalette.textDim, lineHeight = 18.sp),
+                style = InspectorType.prose(),
             )
             Text(
                 crash.origin,
@@ -197,7 +197,7 @@ private fun CrashDetail(crash: CrashRecord, state: InspectorState) {
         Text(
             crash.message,
             modifier = Modifier.padding(top = 6.dp),
-            style = InspectorType.mono(12.sp, color = DebugPalette.textDim, lineHeight = 19.2.sp),
+            style = InspectorType.prose(),
         )
         Text(
             "${crash.threadName} thread · ${formatClock(crash.timestampMillis)} · ${crash.occurrences} occurrences",
