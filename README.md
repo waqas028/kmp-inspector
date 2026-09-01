@@ -33,6 +33,127 @@ import com.waqas028.kmpinspector.generateFibi
 val firstThree = generateFibi().take(3).toList()
 ```
 
+## Sample app
+
+`sample/` holds a Compose Multiplatform app that consumes the library, so you can run the real
+thing on each platform before publishing anything.
+
+| Module        | What it is                                                        |
+|---------------|-------------------------------------------------------------------|
+| `:library`    | The library itself — what gets published                          |
+| `:sample:shared` | Shared Compose UI (`App.kt`) + desktop entry point, a KMP library |
+| `:sample:androidApp` | Thin Android application module hosting `MainActivity`      |
+| `sample/iosApp/` | Xcode project hosting the shared UI via `MainViewController()`  |
+
+The split exists because **AGP 9 no longer allows `com.android.application` and the Kotlin
+Multiplatform plugin in the same module**. Shared code lives in a KMP library (`:sample:shared`),
+and `:sample:androidApp` is a plain Android app that depends on it. This is the layout Google now recommends.
+
+Run it:
+
+```bash
+./gradlew :sample:shared:run          # desktop — fastest loop, no emulator
+./gradlew :sample:androidApp:installDebug  # Android, onto a running emulator/device
+open sample/iosApp/iosApp.xcodeproj        # iOS — then Cmd+R
+```
+
+Two iOS settings in `sample/iosApp/iosApp.xcodeproj` are load-bearing, and both cause runtime or build failures
+if dropped:
+
+- `EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64` — the Gradle build has no `iosX64` target, so
+  Xcode must not ask for an Intel simulator slice. Remove this only if you add `iosX64()` to both
+  `:library` and `:sample:shared` (needed for anyone building on an Intel Mac).
+- `CADisableMinimumFrameDurationOnPhone` in `Info.plist` — Compose for iOS **throws on startup**
+  without it, to avoid being silently capped at 60Hz on ProMotion devices.
+
+The **Debug KMP Inspector** button calls `generateFibi()`, `firstElement` and `secondElement` from
+the library. Because those two are `expect`/`actual` values, each platform prints different numbers —
+which is the point: it proves the per-platform `actual` implementations are really being linked in.
+
+## Testing the library in a project before publishing
+
+Three ways, from fastest loop to most faithful. Use the first while building the API, the second
+before you publish for real.
+
+### 1. Project dependency — what this repo's sample uses
+
+Both modules are in one Gradle build, so `:sample:shared` just declares:
+
+```kotlin
+// sample/shared/build.gradle.kts
+commonMain.dependencies {
+    api(project(":library"))
+}
+```
+
+Edit library code, hit run, see the change. No publishing, no version numbers. The sample also acts
+as a compile check on your public API — if something is awkward to call, you find out immediately.
+
+**What it does not catch:** anything about packaging. Your POM, your coordinates, your published
+metadata, and whether consumers can actually resolve the artifact are all invisible here, because
+Gradle wires the modules together directly and never builds a real artifact.
+
+### 2. Maven Local — verify the real artifact
+
+This is the step to do **before** your first Maven Central release.
+
+```bash
+./gradlew :library:publishToMavenLocal
+```
+
+That writes a real artifact tree to `~/.m2/repository/com/waqas028/kmp-inspector/1.0.0/`. Inspect
+what a consumer will actually download:
+
+```bash
+ls ~/.m2/repository/com/waqas028/kmp-inspector/1.0.0/
+cat ~/.m2/repository/com/waqas028/kmp-inspector/1.0.0/*.pom
+```
+
+Then consume it from **any** project — including a throwaway one — by adding `mavenLocal()` first
+in the repository list:
+
+```kotlin
+// settings.gradle.kts of the consuming project
+dependencyResolutionManagement {
+    repositories {
+        mavenLocal()      // must come first, or Maven Central wins
+        google()
+        mavenCentral()
+    }
+}
+```
+
+```kotlin
+// build.gradle.kts of the consuming module
+implementation("com.waqas028:kmp-inspector:1.0.0")
+```
+
+Two gotchas worth knowing:
+
+- **`publishToMavenLocal` skips signing**, so it works without your GPG key set up. A successful
+  local publish therefore does *not* prove the signed Central publish will succeed.
+- Because the version is a fixed `1.0.0`, Gradle caches it. After republishing, the consumer may
+  keep the stale copy — use a `1.0.0-SNAPSHOT` version while iterating, or run the consumer build
+  with `--refresh-dependencies`.
+
+### 3. Composite build — a separate project, still building from source
+
+When you want to test against a real app that lives in its own repo, without publishing at all:
+
+```kotlin
+// settings.gradle.kts of the consuming project
+includeBuild("../KmpInspector")
+```
+
+```kotlin
+// build.gradle.kts of the consuming module — normal coordinates, no version
+implementation("com.waqas028:kmp-inspector")
+```
+
+Gradle substitutes the dependency with the local build automatically, matching on the `group` and
+artifact name. You get the separate-repo layout of a real consumer with the instant feedback of a
+project dependency. This is the best option for testing against an existing app of yours.
+
 ## Building
 
 ```bash
