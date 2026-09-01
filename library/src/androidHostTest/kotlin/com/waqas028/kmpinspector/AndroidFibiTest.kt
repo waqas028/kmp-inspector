@@ -1,4 +1,4 @@
-package io.github.kotlin.fibonacci
+package com.waqas028.kmpinspector
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
