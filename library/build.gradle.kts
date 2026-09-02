@@ -8,8 +8,12 @@ plugins {
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
-group = "com.waqas028"
-version = "1.0.0"
+group = "io.github.waqas028"
+// CI derives this from the release tag (-PlibraryVersion=1.2.3); local builds fall back to a
+// snapshot so an accidental publish can never overwrite a released version. Do NOT rename the
+// property to VERSION_NAME -- the vanniktech plugin consumes that name itself and finalises the
+// version, after which the coordinates(...) call below fails with "property 'version' is final".
+version = providers.gradleProperty("libraryVersion").getOrElse("1.0.0-SNAPSHOT")
 
 kotlin {
     jvm()
@@ -17,6 +21,17 @@ kotlin {
         namespace = "com.waqas028.kmpinspector"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
+
+        // AGP defaults Android resource processing to OFF for multiplatform library modules, which
+        // also leaves variant.sources.assets null. Compose wires its
+        // copyAndroidMainComposeResourcesToAndroidAssets task through exactly that property
+        // (sources.assets?.addGeneratedSourceDirectory(...)), so with it null the task is
+        // registered but never given an output directory and composeResources/ never reaches the
+        // AAR -- the bundled fonts silently vanish for Android consumers only. Turning resource
+        // processing on restores the assets pipeline Compose's own wiring waits for. Do not remove.
+        androidResources {
+            enable = true
+        }
 
         withJava() // enable java compilation support
         withHostTestBuilder {}.configure {}

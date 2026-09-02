@@ -1,7 +1,7 @@
 # KmpInspector
 
 A [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) library published to
-[Maven Central](https://central.sonatype.com/) as `com.waqas028:kmp-inspector`.
+[Maven Central](https://central.sonatype.com/) as `io.github.waqas028:kmp-inspector`.
 
 ## Supported targets
 
@@ -16,9 +16,13 @@ A [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) library
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("com.waqas028:kmp-inspector:1.0.0")
+    implementation("io.github.waqas028:kmp-inspector:<version>")
 }
 ```
+
+> Not on Maven Central yet — the first tagged release sets this version. Until then, consume the
+> library via Maven Local or a composite build (see
+> [Testing the library in a project before publishing](#testing-the-library-in-a-project-before-publishing)).
 
 ## Usage
 
@@ -149,13 +153,18 @@ This is the step to do **before** your first Maven Central release.
 ./gradlew :library:publishToMavenLocal
 ```
 
-That writes a real artifact tree to `~/.m2/repository/com/waqas028/kmp-inspector/1.0.0/`. Inspect
-what a consumer will actually download:
+Local builds do not set the `libraryVersion` property, so the version falls back to
+`1.0.0-SNAPSHOT` (CI passes the real version from the release tag). That writes a real artifact
+tree to `~/.m2/repository/io/github/waqas028/kmp-inspector/1.0.0-SNAPSHOT/`. Inspect what a
+consumer will actually download:
 
 ```bash
-ls ~/.m2/repository/com/waqas028/kmp-inspector/1.0.0/
-cat ~/.m2/repository/com/waqas028/kmp-inspector/1.0.0/*.pom
+ls ~/.m2/repository/io/github/waqas028/kmp-inspector/1.0.0-SNAPSHOT/
+cat ~/.m2/repository/io/github/waqas028/kmp-inspector/1.0.0-SNAPSHOT/*.pom
 ```
+
+To stage a specific version instead, pass it yourself:
+`./gradlew :library:publishToMavenLocal -PlibraryVersion=1.0.0`.
 
 Then consume it from **any** project — including a throwaway one — by adding `mavenLocal()` first
 in the repository list:
@@ -173,7 +182,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 // build.gradle.kts of the consuming module
-implementation("com.waqas028:kmp-inspector:1.0.0")
+implementation("io.github.waqas028:kmp-inspector:1.0.0-SNAPSHOT")
 ```
 
 Two gotchas worth knowing:
@@ -183,9 +192,10 @@ Two gotchas worth knowing:
   unconditionally, `publishToMavenLocal` fails with *"no configured signatory"* and cannot be
   worked around by excluding the sign tasks — the publications still reference the `.asc` files.
   Either way, a successful local publish does *not* prove the signed Central publish will succeed.
-- Because the version is a fixed `1.0.0`, Gradle caches it. After republishing, the consumer may
-  keep the stale copy — use a `1.0.0-SNAPSHOT` version while iterating, or run the consumer build
-  with `--refresh-dependencies`.
+- A local build always publishes `1.0.0-SNAPSHOT`, so each republish overwrites the same
+  coordinates in `~/.m2`. If the consumer holds on to a stale copy, run its build with
+  `--refresh-dependencies`. Staging a fixed version with `-PlibraryVersion=1.0.0` is cached
+  harder still, so prefer the snapshot while iterating.
 
 ### 3. Composite build — a separate project, still building from source
 
@@ -198,7 +208,7 @@ includeBuild("../KmpInspector")
 
 ```kotlin
 // build.gradle.kts of the consuming module — normal coordinates, no version
-implementation("com.waqas028:kmp-inspector")
+implementation("io.github.waqas028:kmp-inspector")
 ```
 
 Gradle substitutes the dependency with the local build automatically, matching on the `group` and
@@ -228,7 +238,16 @@ which triggers on a published GitHub release. It requires these repository secre
 | `SIGNING_PASSWORD`       | GPG key passphrase                   |
 | `GPG_KEY_CONTENTS`       | ASCII-armored GPG private key        |
 
-Publish locally with `./gradlew publishToMavenLocal`.
+**The published version comes from the release tag.** The workflow strips a leading `v` and passes
+the rest to Gradle as `-PlibraryVersion`, so the tag must be `v<major>.<minor>.<patch>` with an
+optional qualifier — `v1.2.3`, `v1.2.3-rc1`. Any other shape fails the job before it uploads
+anything, and a `-SNAPSHOT` tag is rejected outright. You never edit the version in
+`library/build.gradle.kts`.
+
+Builds that do not set that property — every local build — fall back to `1.0.0-SNAPSHOT`, so an
+accidental local publish can never overwrite a released version.
+
+Publish locally with `./gradlew :library:publishToMavenLocal`; it writes `1.0.0-SNAPSHOT` to `~/.m2`.
 
 ## License
 
