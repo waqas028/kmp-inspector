@@ -14,8 +14,12 @@ kotlinxSerialization = "1.11.0"
 coroutines = "1.11.0"
 workManager = "2.11.2"
 vanniktech-maven-publish = "0.36.0"
+kmp-inspector = "1.0.0-beta01"
 
 [libraries]
+# The published library. The sample uses it when usePublishedInspector=true, to test the real
+# Maven Central artifact end to end; otherwise the sample builds against project(":library").
+kmp-inspector = { module = "io.github.waqas028:kmp-inspector", version.ref = "kmp-inspector" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }

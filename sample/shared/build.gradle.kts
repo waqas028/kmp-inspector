@@ -39,9 +39,17 @@ kotlin {
             api(compose.material3)
             api(compose.ui)
 
-            // The library under test. A project dependency means edits to
-            // :library are picked up on the next run, with no publish step.
-            api(project(":library"))
+            // The library under test. Set usePublishedInspector=true (in gradle.properties, or
+            // -PusePublishedInspector=true on the command line) to resolve the released artifact
+            // from Maven Central -- use that to verify a real release on every platform, notably
+            // the Android asset packaging a project dependency reads from disk and never exercises.
+            // Anything else (false, or unset) builds against local :library source, so edits are
+            // picked up on the next run with no publish step.
+            if (providers.gradleProperty("usePublishedInspector").map(String::toBoolean).getOrElse(false)) {
+                api(libs.kmp.inspector)
+            } else {
+                api(project(":library"))
+            }
 
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
