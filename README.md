@@ -1,260 +1,255 @@
 # KmpInspector
 
-A [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) library published to
-[Maven Central](https://central.sonatype.com/) as `io.github.waqas028:kmp-inspector`.
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.waqas028/kmp-inspector.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.waqas028/kmp-inspector)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20Desktop-brightgreen.svg)
 
-## Supported targets
+An in-app debugging overlay for [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/) — inspect network traffic, database contents, background work, logs, and crashes from inside your running app.
 
-| Target  | Source set                      |
-|---------|---------------------------------|
-| Android | `androidMain`                   |
-| iOS     | `iosArm64`, `iosSimulatorArm64` |
-| Desktop | `jvmMain`                       |
+KmpInspector is a floating bubble you wrap your UI with once. Tapping it opens a full-screen inspector with five panels, so you can debug a real device build without a laptop, a proxy, or a cable. It runs on **Android, iOS, and desktop** from a single Compose codebase, and it is deliberately client-agnostic: you feed it data from whatever HTTP client, database, and scheduler you already use, so it is not tied to Ktor, Room, or any specific stack. Drop it into any Compose Multiplatform app — or a Jetpack Compose Android app, or a Compose for Desktop app — enable it in debug builds, and switch it off for release.
+
+## What it shows
+
+| Panel | What you see |
+|---|---|
+| **Network** | Requests with method, URL, status code, duration, and payload sizes |
+| **Database** | Your database info and table contents |
+| **Background Work** | Scheduled/queued jobs (Android WorkManager; a quiet tab elsewhere) |
+| **Logs** | A 2,000-line ring buffer, filterable by level |
+| **Crashes** | Fatal crashes kept across restarts, plus non-fatal exceptions you record |
+
+## Supported platforms
+
+| Platform | Target |
+|---|---|
+| Android | `minSdk 24`+ |
+| iOS | `iosArm64`, `iosSimulatorArm64` |
+| Desktop (JVM) | Windows, macOS, Linux |
+
+> **Requirement:** KmpInspector is a Compose overlay. The UI you wrap must be built with Compose (Jetpack Compose on Android, Compose Multiplatform on iOS/desktop). You can record data from any code, but the inspector itself renders on a Compose surface.
 
 ## Installation
+
+Add the dependency to the module that holds your Compose UI. Use the latest version from the badge above.
 
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("io.github.waqas028:kmp-inspector:<version>")
+    implementation("io.github.waqas028:kmp-inspector:1.0.0-beta01")
 }
 ```
 
-> Not on Maven Central yet — the first tagged release sets this version. Until then, consume the
-> library via Maven Local or a composite build (see
-> [Testing the library in a project before publishing](#testing-the-library-in-a-project-before-publishing)).
+Using a version catalog? Add it to `gradle/libs.versions.toml`:
 
-## Usage
+```toml
+[versions]
+kmp-inspector = "1.0.0-beta01"
 
-Wrap your root composable once. The bubble and the whole inspector come from the library — you build
-none of that UI yourself:
+[libraries]
+kmp-inspector = { module = "io.github.waqas028:kmp-inspector", version.ref = "kmp-inspector" }
+```
 
 ```kotlin
-import com.waqas028.kmpinspector.KmpInspector
-
-setContent {
-    KmpInspector {
-        MyApp()
-    }
-}
+// build.gradle.kts
+implementation(libs.kmp.inspector)
 ```
 
-A draggable bubble floats over your app; tapping it opens a full-screen inspector with five
-sections: **Network, Database, Background Work (Android only), Logs, and Crashes**.
-
-### Feeding it data
-
-The inspector shows what you give it, so it works with whichever HTTP client, database and scheduler
-you already use:
+Make sure `mavenCentral()` is in your repositories (in `settings.gradle.kts`):
 
 ```kotlin
-Inspector.configure(appId = "com.example.shop", variant = "debug")
-
-Inspector.recordRequest(method = "GET", url = url, statusCode = 200, durationMillis = 142)
-InspectorLog.i("CartStore", "Cart restored from disk")
-Inspector.recordNonFatal("JsonDecodingException", message, origin = "ProductMapper.kt:41")
-Inspector.setWork(jobs)
-Inspector.setDatabase(info, tables)
-```
-
-Buffers follow the spec: 200 requests, a 2,000-line log ring.
-
-### Keeping it out of release builds
-
-The overlay is opt-in — it never appears unless you wrap something — but you also want it gone in
-production:
-
-```kotlin
-KmpInspector(enabled = BuildConfig.DEBUG) {
-    MyApp()
-}
-```
-
-With `enabled = false` the composable renders `content()` directly, so nothing enters the
-composition.
-
-### Responsive layout
-
-One body, three arrangements, switched on available width:
-
-| Width | Arrangement |
-|---|---|
-| < 768dp | Single pane — detail replaces the list, back arrow returns |
-| 768–1439dp | 300dp list pane + hairline + detail, both visible, no back arrow |
-| ≥ 1440dp | 420dp list pane + detail |
-
-Logs is always a single full-width pane; it has no detail view.
-
-## Sample app
-
-`sample/` holds a Compose Multiplatform app that consumes the library, so you can run the real
-thing on each platform before publishing anything.
-
-| Module        | What it is                                                        |
-|---------------|-------------------------------------------------------------------|
-| `:library`    | The library itself — what gets published                          |
-| `:sample:shared` | Shared Compose UI (`App.kt`) + desktop entry point, a KMP library |
-| `:sample:androidApp` | Thin Android application module hosting `MainActivity`      |
-| `sample/iosApp/` | Xcode project hosting the shared UI via `MainViewController()`  |
-
-The split exists because **AGP 9 no longer allows `com.android.application` and the Kotlin
-Multiplatform plugin in the same module**. Shared code lives in a KMP library (`:sample:shared`),
-and `:sample:androidApp` is a plain Android app that depends on it. This is the layout Google now recommends.
-
-Run it:
-
-```bash
-./gradlew :sample:shared:run          # desktop — fastest loop, no emulator
-./gradlew :sample:androidApp:installDebug  # Android, onto a running emulator/device
-open sample/iosApp/iosApp.xcodeproj        # iOS — then Cmd+R
-```
-
-Two iOS settings in `sample/iosApp/iosApp.xcodeproj` are load-bearing, and both cause runtime or build failures
-if dropped:
-
-- `EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64` — the Gradle build has no `iosX64` target, so
-  Xcode must not ask for an Intel simulator slice. Remove this only if you add `iosX64()` to both
-  `:library` and `:sample:shared` (needed for anyone building on an Intel Mac).
-- `CADisableMinimumFrameDurationOnPhone` in `Info.plist` — Compose for iOS **throws on startup**
-  without it, to avoid being silently capped at 60Hz on ProMotion devices.
-
-On launch the sample seeds the inspector with fixture data so every section has something to show.
-The **Simulate activity** button records a request and a log line at runtime, so you can watch the
-bubble's unread badge increment and the Logs tail update live.
-
-## Testing the library in a project before publishing
-
-Three ways, from fastest loop to most faithful. Use the first while building the API, the second
-before you publish for real.
-
-### 1. Project dependency — what this repo's sample uses
-
-Both modules are in one Gradle build, so `:sample:shared` just declares:
-
-```kotlin
-// sample/shared/build.gradle.kts
-commonMain.dependencies {
-    api(project(":library"))
-}
-```
-
-Edit library code, hit run, see the change. No publishing, no version numbers. The sample also acts
-as a compile check on your public API — if something is awkward to call, you find out immediately.
-
-**What it does not catch:** anything about packaging. Your POM, your coordinates, your published
-metadata, and whether consumers can actually resolve the artifact are all invisible here, because
-Gradle wires the modules together directly and never builds a real artifact.
-
-### 2. Maven Local — verify the real artifact
-
-This is the step to do **before** your first Maven Central release.
-
-```bash
-./gradlew :library:publishToMavenLocal
-```
-
-Local builds do not set the `libraryVersion` property, so the version falls back to
-`1.0.0-SNAPSHOT` (CI passes the real version from the release tag). That writes a real artifact
-tree to `~/.m2/repository/io/github/waqas028/kmp-inspector/1.0.0-SNAPSHOT/`. Inspect what a
-consumer will actually download:
-
-```bash
-ls ~/.m2/repository/io/github/waqas028/kmp-inspector/1.0.0-SNAPSHOT/
-cat ~/.m2/repository/io/github/waqas028/kmp-inspector/1.0.0-SNAPSHOT/*.pom
-```
-
-To stage a specific version instead, pass it yourself:
-`./gradlew :library:publishToMavenLocal -PlibraryVersion=1.0.0`.
-
-Then consume it from **any** project — including a throwaway one — by adding `mavenLocal()` first
-in the repository list:
-
-```kotlin
-// settings.gradle.kts of the consuming project
 dependencyResolutionManagement {
     repositories {
-        mavenLocal()      // must come first, or Maven Central wins
         google()
         mavenCentral()
     }
 }
 ```
 
-```kotlin
-// build.gradle.kts of the consuming module
-implementation("io.github.waqas028:kmp-inspector:1.0.0-SNAPSHOT")
-```
+## Quick start
 
-Two gotchas worth knowing:
-
-- **Signing is skipped locally only because the build makes it conditional.** `signAllPublications()`
-  runs only when a `signingInMemoryKey` property is present (CI supplies it). Called
-  unconditionally, `publishToMavenLocal` fails with *"no configured signatory"* and cannot be
-  worked around by excluding the sign tasks — the publications still reference the `.asc` files.
-  Either way, a successful local publish does *not* prove the signed Central publish will succeed.
-- A local build always publishes `1.0.0-SNAPSHOT`, so each republish overwrites the same
-  coordinates in `~/.m2`. If the consumer holds on to a stale copy, run its build with
-  `--refresh-dependencies`. Staging a fixed version with `-PlibraryVersion=1.0.0` is cached
-  harder still, so prefer the snapshot while iterating.
-
-### 3. Composite build — a separate project, still building from source
-
-When you want to test against a real app that lives in its own repo, without publishing at all:
+Wrap your root composable once. The bubble and the whole inspector come from the library — you build none of that UI yourself.
 
 ```kotlin
-// settings.gradle.kts of the consuming project
-includeBuild("../KmpInspector")
+import com.waqas028.kmpinspector.KmpInspector
+
+@Composable
+fun App() {
+    MaterialTheme {
+        KmpInspector {
+            MyAppContent()   // your existing UI
+        }
+    }
+}
 ```
+
+That's the whole visual integration. A draggable bubble now floats over your app; tapping it opens the inspector.
+
+If you have a **shared Compose Multiplatform module**, wrap your UI here once and every platform gets the overlay for free — then each platform just hosts this `App()` in its native entry point, as shown below.
+
+## Platform setup
+
+The examples below host the same `App()` composable on each platform. If your app is single-platform, use the section that applies.
+
+### Android
+
+Jetpack Compose apps host `App()` in an `Activity`:
 
 ```kotlin
-// build.gradle.kts of the consuming module — normal coordinates, no version
-implementation("io.github.waqas028:kmp-inspector")
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            KmpInspector {
+                MyAppContent()
+            }
+        }
+    }
+}
 ```
 
-Gradle substitutes the dependency with the local build automatically, matching on the `group` and
-artifact name. You get the separate-repo layout of a real consumer with the instant feedback of a
-project dependency. This is the best option for testing against an existing app of yours.
+**One extra Android step** — give the inspector a `Context` in your `Application`, so crashes survive process death and the crash **Share** button works:
 
-## Building
+```kotlin
+import com.waqas028.kmpinspector.data.initializeInspector
+
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        initializeInspector(this)
+    }
+}
+```
+
+Without it the library still runs, but the crash buffer is in-memory only and sharing is disabled.
+
+### iOS
+
+Host your Compose UI in a `ComposeUIViewController` on the Kotlin side:
+
+```kotlin
+// iosMain
+import androidx.compose.ui.window.ComposeUIViewController
+
+fun MainViewController() = ComposeUIViewController {
+    KmpInspector {
+        MyAppContent()
+    }
+}
+```
+
+Then present it from Swift:
+
+```swift
+import SwiftUI
+import Shared   // your Kotlin framework
+
+struct ComposeView: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        MainViewControllerKt.MainViewController()
+    }
+    func updateUIViewController(_ vc: UIViewController, context: Context) {}
+}
+
+struct ContentView: View {
+    var body: some View { ComposeView() }
+}
+```
+
+### Desktop (JVM)
+
+Compose for Desktop hosts `App()` in a `Window`:
+
+```kotlin
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.application
+
+fun main() = application {
+    Window(onCloseRequest = ::exitApplication, title = "My App") {
+        KmpInspector {
+            MyAppContent()
+        }
+    }
+}
+```
+
+## Feeding it data
+
+The inspector shows what you give it, through the `Inspector` and `InspectorLog` entry points. Call `Inspector.configure(...)` once at startup, then record data wherever it happens in your app.
+
+```kotlin
+import com.waqas028.kmpinspector.Inspector
+import com.waqas028.kmpinspector.InspectorLog
+
+// Identify the session in the inspector header (e.g. "com.example.shop · debug")
+Inspector.configure(appId = "com.example.shop", variant = "debug")
+
+// Network — call from your HTTP client's interceptor/logging hook
+Inspector.recordRequest(
+    method = "GET",
+    url = "https://api.example.com/products",
+    statusCode = 200,
+    durationMillis = 142,
+)
+
+// Logs — land in the Logs panel (v / d / i / w / e)
+InspectorLog.i("CartStore", "Cart restored from disk")
+InspectorLog.e("Checkout", "Failed to parse price \"12,900\"")
+
+// A handled exception you want a record of
+Inspector.recordNonFatal(
+    exceptionType = "JsonDecodingException",
+    message = "Unexpected token at index 41",
+    origin = "ProductMapper.kt:41",
+)
+
+// Database and background work snapshots
+Inspector.setDatabase(info, tables)
+Inspector.setWork(jobs, engineLabel = "WorkManager 2.11")
+```
+
+Because these are plain calls, the inspector works with any HTTP client (Ktor, OkHttp, …), any database (Room, SQLDelight, …), and any scheduler — you decide what to report.
+
+### Capturing crashes
+
+Opt in to catching uncaught exceptions so a fatal crash is still there after the app restarts:
+
+```kotlin
+// Frames starting with your package prefix are highlighted as "your" code
+Inspector.installCrashHandler(appPackagePrefix = "com.example")
+```
+
+The handler delegates to whatever was installed before it, so an existing crash reporter keeps working and the app still crashes normally. On iOS this covers unhandled **Kotlin** exceptions only — Objective-C/Swift exceptions and hard signals (SIGSEGV, SIGABRT) don't reach it.
+
+## Keeping it out of release builds
+
+The overlay is opt-in — it never appears unless you wrap something — but you'll also want it gone in production. Pass your own debug flag:
+
+```kotlin
+KmpInspector(enabled = BuildConfig.DEBUG) {
+    MyAppContent()
+}
+```
+
+With `enabled = false` the composable renders your content directly, so nothing from the inspector enters the composition.
+
+## Sample app
+
+The [`sample/`](sample/) directory is a Compose Multiplatform app that consumes KmpInspector and runs it on all three platforms — a working reference for wiring it into a real app.
 
 ```bash
-./gradlew build
+./gradlew :sample:shared:run              # desktop
+./gradlew :sample:androidApp:installDebug # Android (emulator/device)
+open sample/iosApp/iosApp.xcodeproj       # iOS — then Cmd+R
 ```
 
-Per-target tests: `jvmTest`, `iosSimulatorArm64Test`, `testAndroidHostTest`. Note that
-`iosSimulatorArm64Test` only runs on macOS — the GitHub Actions workflow in
-[.github/workflows/gradle.yml](.github/workflows/gradle.yml) fans these out across runners.
+## Issues
 
-## Publishing
+Found a bug, or something not working as described? Please [open an issue](https://github.com/waqas028/kmp-inspector/issues) with your platform, versions, and steps to reproduce.
 
-Releases publish to Maven Central via [.github/workflows/publish.yml](.github/workflows/publish.yml),
-which triggers on a published GitHub release. It requires these repository secrets:
+## Contributing
 
-| Secret                   | Purpose                              |
-|--------------------------|--------------------------------------|
-| `MAVEN_CENTRAL_USERNAME` | Central Portal user token name       |
-| `MAVEN_CENTRAL_PASSWORD` | Central Portal user token password   |
-| `SIGNING_KEY_ID`         | GPG key ID                           |
-| `SIGNING_PASSWORD`       | GPG key passphrase                   |
-| `GPG_KEY_CONTENTS`       | ASCII-armored GPG private key        |
-
-**The published version comes from the release tag.** The workflow strips a leading `v` and passes
-the rest to Gradle as `-PlibraryVersion`, so the tag must be `v<major>.<minor>.<patch>` with an
-optional qualifier — `v1.2.3`, `v1.2.3-rc1`. Any other shape fails the job before it uploads
-anything, and a `-SNAPSHOT` tag is rejected outright. You never edit the version in
-`library/build.gradle.kts`.
-
-Builds that do not set that property — every local build — fall back to `1.0.0-SNAPSHOT`, so an
-accidental local publish can never overwrite a released version.
-
-Publish locally with `./gradlew :library:publishToMavenLocal`; it writes `1.0.0-SNAPSHOT` to `~/.m2`.
+Contributions are welcome — anyone can help. Fork the repository, make your change, and open a pull request against [`waqas028/kmp-inspector`](https://github.com/waqas028/kmp-inspector). For anything larger, opening an issue first to discuss the approach is appreciated.
 
 ## License
 
 [Apache License 2.0](LICENSE)
-
-## Other resources
-
-* [Publishing KMP libraries](https://www.jetbrains.com/help/kotlin-multiplatform-dev/multiplatform-publish-libraries.html)
-* [Publishing via the Central Portal](https://central.sonatype.org/publish-ea/publish-ea-guide/)
-* [Gradle Maven Publish Plugin — Publishing to Maven Central](https://vanniktech.github.io/gradle-maven-publish-plugin/central/)
