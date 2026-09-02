@@ -1,7 +1,7 @@
 package com.waqas028.kmpinspector.sample
 
 import android.app.Application
-import com.waqas028.kmpinspector.data.initializeInspectorStorage
+import com.waqas028.kmpinspector.data.initializeInspector
 
 /**
  * Room and WorkManager both need a Context, and the worker runs with no Activity around, so the
@@ -11,7 +11,7 @@ class SampleApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         initializeSampleOnAndroid(this)
-        // Lets the inspector persist crashes across process death.
-        initializeInspectorStorage(this)
+        // Lets the inspector persist crashes across process death, and enables sharing.
+        initializeInspector(this)
     }
 }

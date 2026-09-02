@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.waqas028.kmpinspector.data.InspectorShare
 import com.waqas028.kmpinspector.data.InspectorStore
 import com.waqas028.kmpinspector.data.formatClock
 import com.waqas028.kmpinspector.domain.model.CrashRecord
@@ -226,9 +227,17 @@ private fun CrashDetail(crash: CrashRecord, state: InspectorState) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlineAction("Copy trace") {
-                clipboard.setText(AnnotatedString(crash.frames.joinToString("\n") { it.text }))
+                clipboard.setText(AnnotatedString(shareableReport(crash)))
             }
-            OutlineAction("Share", Glyph.Share) { }
+            // Hidden where the platform has no share sheet, rather than shown and inert.
+            if (InspectorShare.available) {
+                OutlineAction("Share", Glyph.Share) {
+                    InspectorShare.share(
+                        text = shareableReport(crash),
+                        subject = "${crash.exceptionType}: ${crash.message.take(60)}",
+                    )
+                }
+            }
             OutlineAction(
                 if (state.hideFrameworkFrames) "Show framework frames" else "Hide framework frames",
             ) { state.hideFrameworkFrames = !state.hideFrameworkFrames }
@@ -310,4 +319,21 @@ private fun OutlineAction(label: String, glyph: Glyph? = null, onClick: () -> Un
             )
         }
     }
+}
+
+/**
+ * What Copy trace and Share both produce: the frames alone are not much use in a bug report without
+ * the exception, the message and when it happened.
+ */
+private fun shareableReport(crash: CrashRecord): String = buildString {
+    appendLine(if (crash.fatal) "FATAL · app terminated" else "NON-FATAL · caught")
+    appendLine(crash.exceptionType)
+    appendLine(crash.message)
+    appendLine()
+    appendLine("${crash.threadName} thread · ${formatClock(crash.timestampMillis)} · ${crash.occurrences} occurrences")
+    appendLine("origin: ${crash.origin}")
+    crash.causedBy?.let { appendLine(); appendLine(it) }
+    appendLine()
+    appendLine("STACK TRACE")
+    crash.frames.forEach { appendLine(if (it.isAppFrame) "  ${it.text}" else "    ${it.text}") }
 }

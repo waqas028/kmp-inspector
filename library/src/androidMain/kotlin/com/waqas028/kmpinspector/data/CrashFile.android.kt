@@ -1,19 +1,8 @@
 package com.waqas028.kmpinspector.data
 
-import android.content.Context
 import java.io.File
 
-private var appContext: Context? = null
-
-/**
- * Gives the inspector somewhere to persist crashes. Without it the library still works, but the
- * crash buffer is in-memory only and dies with the process.
- */
-fun initializeInspectorStorage(context: Context) {
-    appContext = context.applicationContext
-}
-
-private fun file(): File? = appContext?.let { File(it.filesDir, "kmpinspector-crashes.txt") }
+private fun file(): File? = inspectorContext()?.let { File(it.filesDir, "kmpinspector-crashes.txt") }
 
 internal actual object CrashFile {
     actual fun read(): String? = file()?.takeIf { it.exists() }?.readText()
