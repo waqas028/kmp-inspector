@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +47,8 @@ import com.waqas028.kmpinspector.presentation.InspectorState
 import com.waqas028.kmpinspector.presentation.NetworkFilter
 import com.waqas028.kmpinspector.presentation.PaneWidth
 import com.waqas028.kmpinspector.presentation.RequestDetailTab
+import com.waqas028.kmpinspector.presentation.SortOrder
+import com.waqas028.kmpinspector.presentation.flip
 import com.waqas028.kmpinspector.presentation.common.EmptyState
 import com.waqas028.kmpinspector.presentation.common.FilterPill
 import com.waqas028.kmpinspector.presentation.common.Hairline
@@ -53,6 +56,9 @@ import com.waqas028.kmpinspector.presentation.common.HitTarget
 import com.waqas028.kmpinspector.presentation.common.KeyValueRow
 import com.waqas028.kmpinspector.presentation.common.Kicker
 import com.waqas028.kmpinspector.presentation.common.NoResults
+import com.waqas028.kmpinspector.presentation.common.ScrollToTop
+import com.waqas028.kmpinspector.presentation.common.SortToggle
+import com.waqas028.kmpinspector.presentation.common.StatusLine
 import com.waqas028.kmpinspector.presentation.common.StatusMark
 import com.waqas028.kmpinspector.presentation.pathBudget
 import com.waqas028.kmpinspector.presentation.shell.MasterDetail
@@ -96,6 +102,7 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
         return
     }
 
+    // The store keeps requests newest first; oldest first is a reversal of the same list.
     val filtered = all.filter { r ->
         val matchesFilter = when (state.networkFilter) {
             NetworkFilter.All -> true
@@ -106,7 +113,7 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
         }
         val q = state.query.trim()
         matchesFilter && (q.isEmpty() || r.url.contains(q, true) || r.method.contains(q, true))
-    }
+    }.let { if (state.networkSort == SortOrder.OldestFirst) it.asReversed() else it }
 
     val selected = filtered.firstOrNull { it.id == state.selectedRequestId }
         ?: all.firstOrNull { it.id == state.selectedRequestId }
@@ -131,27 +138,33 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
                         )
                     }
                 } else {
-                LazyColumn(Modifier.weight(1f)) {
-                    items(filtered, key = { it.id }) { request ->
-                        NetworkRow(
-                            request = request,
-                            budget = pane.pathBudget,
-                            selected = request.id == state.selectedRequestId,
-                            onClick = {
-                                state.selectedRequestId = request.id
-                                state.curlVisible = false
-                            },
-                        )
-                        Hairline(color = DebugPalette.lineFaint)
+                val listState = rememberLazyListState()
+                Box(Modifier.weight(1f)) {
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                        items(filtered, key = { it.id }) { request ->
+                            NetworkRow(
+                                request = request,
+                                budget = pane.pathBudget,
+                                selected = request.id == state.selectedRequestId,
+                                onClick = {
+                                    state.selectedRequestId = request.id
+                                    state.curlVisible = false
+                                },
+                            )
+                            Hairline(color = DebugPalette.lineFaint)
+                        }
                     }
+                    ScrollToTop(listState)
                 }
                 }
                 Hairline()
-                Text(
-                    "${filtered.size} of ${all.size} requests · capture buffer ${InspectorStore.NETWORK_CAPACITY}",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                    style = InspectorType.meta,
-                )
+                // The status line never scrolls and has room on the right, so the sort toggle
+                // lives here rather than crowding the filter chips.
+                StatusLine(
+                    text = "${filtered.size} of ${all.size} requests · capture buffer ${InspectorStore.NETWORK_CAPACITY}",
+                ) {
+                    SortToggle(state.networkSort, onToggle = { state.networkSort = state.networkSort.flip() })
+                }
             }
         },
         detail = { selected?.let { NetworkDetail(it, state, pane) } },

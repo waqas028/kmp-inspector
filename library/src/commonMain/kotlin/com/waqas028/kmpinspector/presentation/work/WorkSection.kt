@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -32,11 +33,16 @@ import com.waqas028.kmpinspector.domain.model.WorkJob
 import com.waqas028.kmpinspector.domain.model.WorkState
 import com.waqas028.kmpinspector.presentation.InspectorState
 import com.waqas028.kmpinspector.presentation.PaneWidth
+import com.waqas028.kmpinspector.presentation.SortOrder
+import com.waqas028.kmpinspector.presentation.flip
 import com.waqas028.kmpinspector.presentation.common.EmptyState
 import com.waqas028.kmpinspector.presentation.common.Hairline
 import com.waqas028.kmpinspector.presentation.common.KeyValueRow
 import com.waqas028.kmpinspector.presentation.common.Kicker
 import com.waqas028.kmpinspector.presentation.common.OutlineChip
+import com.waqas028.kmpinspector.presentation.common.ScrollToTop
+import com.waqas028.kmpinspector.presentation.common.SortToggle
+import com.waqas028.kmpinspector.presentation.common.StatusLine
 import com.waqas028.kmpinspector.presentation.common.StateBadge
 import com.waqas028.kmpinspector.presentation.shell.MasterDetail
 import com.waqas028.kmpinspector.presentation.theme.DebugPalette
@@ -74,7 +80,10 @@ internal fun WorkSection(state: InspectorState, pane: PaneWidth) {
     }
 
     val q = state.query.trim()
-    val filtered = all.filter { q.isEmpty() || it.name.contains(q, true) || (it.tag?.contains(q, true) == true) }
+    // Hosts hand jobs over newest first (see Inspector.setWork); oldest first is the reversal.
+    val filtered = all
+        .filter { q.isEmpty() || it.name.contains(q, true) || (it.tag?.contains(q, true) == true) }
+        .let { if (state.workSort == SortOrder.OldestFirst) it.asReversed() else it }
     val selected = all.firstOrNull { it.id == state.selectedWorkId }
 
     MasterDetail(
@@ -84,17 +93,19 @@ internal fun WorkSection(state: InspectorState, pane: PaneWidth) {
         placeholder = "Select a job",
         list = {
             Column(Modifier.fillMaxSize()) {
-                Text(
-                    "${InspectorStore.workLabel ?: "Background work"} · ${all.size} jobs",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                    style = InspectorType.meta,
-                )
+                StatusLine(text = "${InspectorStore.workLabel ?: "Background work"} · ${all.size} jobs") {
+                    SortToggle(state.workSort, onToggle = { state.workSort = state.workSort.flip() })
+                }
                 Hairline()
-                LazyColumn(Modifier.weight(1f)) {
-                    items(filtered, key = { it.id }) { job ->
-                        WorkRow(job, job.id == state.selectedWorkId) { state.selectedWorkId = job.id }
-                        Hairline(color = DebugPalette.lineFaint)
+                val listState = rememberLazyListState()
+                Box(Modifier.weight(1f)) {
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                        items(filtered, key = { it.id }) { job ->
+                            WorkRow(job, job.id == state.selectedWorkId) { state.selectedWorkId = job.id }
+                            Hairline(color = DebugPalette.lineFaint)
+                        }
                     }
+                    ScrollToTop(listState)
                 }
             }
         },

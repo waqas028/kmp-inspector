@@ -4,12 +4,15 @@ import android.database.Cursor
 import androidx.room.PooledConnection
 import androidx.room.RoomDatabase
 import androidx.room.useReaderConnection
+import androidx.room.useWriterConnection
 import androidx.sqlite.SQLITE_DATA_BLOB
 import androidx.sqlite.SQLITE_DATA_FLOAT
 import androidx.sqlite.SQLITE_DATA_INTEGER
 import androidx.sqlite.SQLITE_DATA_NULL
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.waqas028.kmpinspector.Inspector
+import com.waqas028.kmpinspector.InspectorLog
+import com.waqas028.kmpinspector.domain.model.DatabaseController
 import com.waqas028.kmpinspector.domain.model.DbColumn
 import com.waqas028.kmpinspector.domain.model.DbInfo
 import com.waqas028.kmpinspector.domain.model.DbTable
@@ -45,28 +48,68 @@ internal object RoomCollector {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun attach(database: RoomDatabase, fileName: String?) {
-        snapshot(database, fileName)
-        Inspector.onOpen { snapshot(database, fileName) }
+        val controller = Controller(database, fileName)
+        controller.refresh()
+        Inspector.onOpen { controller.refresh() }
     }
 
-    private fun snapshot(database: RoomDatabase, fileName: String?) {
-        scope.launch {
-            runCatching {
-                val support = runCatching { database.openHelper.readableDatabase }.getOrNull()
-                val tables = support?.readTables()
-                    ?: database.useReaderConnection { connection -> connection.readTables() }
-                val file = support?.path?.let(::File)
-                    ?: fileName?.let { inspectorContext()?.getDatabasePath(it) }
-                Inspector.setDatabase(
-                    info = DbInfo(
-                        fileName = fileName ?: file?.name ?: "room",
-                        engine = "SQLite · Room",
-                        sizeLabel = file?.takeIf { it.exists() }?.sizeLabel()
-                            ?: "${tables.sumOf { it.rowCount }} rows",
-                    ),
-                    tables = tables,
-                )
+    /**
+     * Writes use the same two paths as reads. After a raw UPDATE, Room's invalidation tracker is
+     * poked so the app's own Flows and LiveData see the change — the triggers log it, but Room
+     * only reads that log when asked.
+     */
+    private class Controller(
+        private val database: RoomDatabase,
+        private val fileName: String?,
+    ) : DatabaseController {
+
+        override fun refresh() {
+            scope.launch { runCatching { snapshot() }.onFailure { report("refresh", it) } }
+        }
+
+        override fun updateCell(table: String, rowId: Long, column: String, value: String?) {
+            scope.launch {
+                runCatching {
+                    val sql = "UPDATE `$table` SET `$column` = ? WHERE rowid = ?"
+                    val support = runCatching { database.openHelper.writableDatabase }.getOrNull()
+                    if (support != null) {
+                        support.execSQL(sql, arrayOf<Any?>(value, rowId))
+                    } else {
+                        database.useWriterConnection { connection ->
+                            connection.usePrepared(sql) { stmt ->
+                                if (value == null) stmt.bindNull(1) else stmt.bindText(1, value)
+                                stmt.bindLong(2, rowId)
+                                stmt.step()
+                            }
+                        }
+                    }
+                    runCatching { database.invalidationTracker.refreshAsync() }
+                    InspectorLog.i("Inspector", "$table.$column updated for rowid $rowId")
+                    snapshot()
+                }.onFailure { report("update $table.$column", it) }
             }
+        }
+
+        private suspend fun snapshot() {
+            val support = runCatching { database.openHelper.readableDatabase }.getOrNull()
+            val tables = support?.readTables()
+                ?: database.useReaderConnection { connection -> connection.readTables() }
+            val file = support?.path?.let(::File)
+                ?: fileName?.let { inspectorContext()?.getDatabasePath(it) }
+            Inspector.setDatabase(
+                info = DbInfo(
+                    fileName = fileName ?: file?.name ?: "room",
+                    engine = "SQLite · Room",
+                    sizeLabel = file?.takeIf { it.exists() }?.sizeLabel()
+                        ?: "${tables.sumOf { it.rowCount }} rows",
+                ),
+                tables = tables,
+                controller = this,
+            )
+        }
+
+        private fun report(what: String, error: Throwable) {
+            InspectorLog.e("Inspector", "Database $what failed: $error")
         }
     }
 
@@ -78,25 +121,37 @@ internal object RoomCollector {
             val columns = query("PRAGMA table_info(`$name`)").use { c ->
                 buildList { while (c.moveToNext()) add(DbColumn(c.getString(1), c.getString(2))) }
             }
-            val rows = query("SELECT * FROM `$name` LIMIT $ROW_LIMIT").use { c ->
-                buildList {
-                    while (c.moveToNext()) {
-                        add(
-                            (0 until c.columnCount).map { i ->
-                                when (c.getType(i)) {
-                                    Cursor.FIELD_TYPE_NULL -> DbValue.Null
-                                    Cursor.FIELD_TYPE_INTEGER, Cursor.FIELD_TYPE_FLOAT -> DbValue.Number(c.getString(i))
-                                    Cursor.FIELD_TYPE_BLOB -> DbValue.Blob(c.getBlob(i).size.toLong())
-                                    else -> DbValue.Text(c.getString(i))
-                                }
-                            },
-                        )
-                    }
-                }
+            // rowid first so edits can address the row. WITHOUT ROWID tables reject it; those are
+            // read plainly and stay read-only.
+            val withRowId = runCatching { query(rowIdSelect(name)).use { c -> c.readRows(skipFirst = true) } }
+            val (rowIds, rows) = withRowId.getOrElse {
+                query("SELECT * FROM `$name` LIMIT $ROW_LIMIT").use { c -> c.readRows(skipFirst = false) }
             }
-            DbTable(name = name, columns = columns, rows = rows)
+            DbTable(name = name, columns = columns, rows = rows, rowIds = rowIds)
         }
     }
+
+    private fun Cursor.readRows(skipFirst: Boolean): Pair<List<Long>?, List<List<DbValue>>> {
+        val ids = if (skipFirst) mutableListOf<Long>() else null
+        val rows = buildList {
+            while (moveToNext()) {
+                ids?.add(getLong(0))
+                add(
+                    ((if (skipFirst) 1 else 0) until columnCount).map { i ->
+                        when (getType(i)) {
+                            Cursor.FIELD_TYPE_NULL -> DbValue.Null
+                            Cursor.FIELD_TYPE_INTEGER, Cursor.FIELD_TYPE_FLOAT -> DbValue.Number(getString(i))
+                            Cursor.FIELD_TYPE_BLOB -> DbValue.Blob(getBlob(i).size.toLong())
+                            else -> DbValue.Text(getString(i))
+                        }
+                    },
+                )
+            }
+        }
+        return ids to rows
+    }
+
+    private fun rowIdSelect(name: String) = "SELECT rowid AS _kmp_rowid, * FROM `$name` LIMIT $ROW_LIMIT"
 
     // ---- Driver path --------------------------------------------------------------------------
 
@@ -106,25 +161,36 @@ internal object RoomCollector {
             val columns = usePrepared("PRAGMA table_info(`$name`)") { stmt ->
                 buildList { while (stmt.step()) add(DbColumn(stmt.getText(1), stmt.getText(2))) }
             }
-            val rows = usePrepared("SELECT * FROM `$name` LIMIT $ROW_LIMIT") { stmt ->
-                buildList {
-                    while (stmt.step()) {
-                        add(
-                            (0 until stmt.getColumnCount()).map { i ->
-                                when (stmt.getColumnType(i)) {
-                                    SQLITE_DATA_NULL -> DbValue.Null
-                                    SQLITE_DATA_INTEGER, SQLITE_DATA_FLOAT -> DbValue.Number(stmt.getText(i))
-                                    SQLITE_DATA_BLOB -> DbValue.Blob(stmt.getBlob(i).size.toLong())
-                                    else -> DbValue.Text(stmt.getText(i))
-                                }
-                            },
-                        )
+            val withRowId = runCatching {
+                usePrepared(rowIdSelect(name)) { stmt ->
+                    val ids = mutableListOf<Long>()
+                    val rows = buildList {
+                        while (stmt.step()) {
+                            ids += stmt.getLong(0)
+                            add(stmt.readRow(from = 1))
+                        }
                     }
+                    ids.toList() to rows
                 }
             }
-            DbTable(name = name, columns = columns, rows = rows)
+            val (rowIds, rows) = withRowId.getOrElse {
+                usePrepared("SELECT * FROM `$name` LIMIT $ROW_LIMIT") { stmt ->
+                    null to buildList { while (stmt.step()) add(stmt.readRow(from = 0)) }
+                }
+            }
+            DbTable(name = name, columns = columns, rows = rows, rowIds = rowIds)
         }
     }
+
+    private fun androidx.sqlite.SQLiteStatement.readRow(from: Int): List<DbValue> =
+        (from until getColumnCount()).map { i ->
+            when (getColumnType(i)) {
+                SQLITE_DATA_NULL -> DbValue.Null
+                SQLITE_DATA_INTEGER, SQLITE_DATA_FLOAT -> DbValue.Number(getText(i))
+                SQLITE_DATA_BLOB -> DbValue.Blob(getBlob(i).size.toLong())
+                else -> DbValue.Text(getText(i))
+            }
+        }
 
     private fun File.sizeLabel(): String {
         val kb = length() / 1024.0

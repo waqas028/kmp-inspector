@@ -100,8 +100,31 @@ data class DbTable(
     val name: String,
     val columns: List<DbColumn>,
     val rows: List<List<DbValue>>,
+    /**
+     * SQLite rowid per row, parallel to [rows]. Needed for cell edits to reach a live database;
+     * null for tables handed over as plain snapshots (edits then change the snapshot only).
+     */
+    val rowIds: List<Long>? = null,
 ) {
     val rowCount: Int get() = rows.size
+}
+
+/**
+ * A live database behind the Database panel. Optional: without one the panel browses the
+ * snapshot it was given and edits stay in memory.
+ *
+ * Both calls may run their work on a background thread; they should end by handing a fresh
+ * snapshot to `Inspector.setDatabase` so the panel shows the result.
+ */
+interface DatabaseController {
+    /** Re-read every table and republish. Bound to the Refresh button. */
+    fun refresh()
+
+    /**
+     * Writes one cell. [rowId] comes from [DbTable.rowIds]; a null [value] writes SQL NULL, and any
+     * other string is bound as text, which SQLite converts by the column's affinity.
+     */
+    fun updateCell(table: String, rowId: Long, column: String, value: String?)
 }
 
 data class DbInfo(val fileName: String, val engine: String, val sizeLabel: String)

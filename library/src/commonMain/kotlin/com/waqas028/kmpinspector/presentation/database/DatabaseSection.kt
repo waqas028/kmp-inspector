@@ -8,6 +8,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,7 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -39,11 +51,17 @@ import com.waqas028.kmpinspector.domain.model.DbValue
 import com.waqas028.kmpinspector.presentation.CellAddress
 import com.waqas028.kmpinspector.presentation.InspectorState
 import com.waqas028.kmpinspector.presentation.PaneWidth
+import com.waqas028.kmpinspector.presentation.NameOrder
+import com.waqas028.kmpinspector.presentation.SortOrder
+import com.waqas028.kmpinspector.presentation.flip
 import com.waqas028.kmpinspector.presentation.common.EmptyState
 import com.waqas028.kmpinspector.presentation.common.Hairline
 import com.waqas028.kmpinspector.presentation.common.HitTarget
 import com.waqas028.kmpinspector.presentation.common.NoResults
 import com.waqas028.kmpinspector.presentation.common.OutlineChip
+import com.waqas028.kmpinspector.presentation.common.ScrollToTop
+import com.waqas028.kmpinspector.presentation.common.SortToggle
+import com.waqas028.kmpinspector.presentation.common.StatusLine
 import com.waqas028.kmpinspector.presentation.shell.MasterDetail
 import com.waqas028.kmpinspector.presentation.theme.DebugPalette
 import com.waqas028.kmpinspector.presentation.theme.Glyph
@@ -66,7 +84,12 @@ internal fun DatabaseSection(state: InspectorState, pane: PaneWidth) {
     }
 
     val q = state.query.trim()
-    val filtered = tables.filter { q.isEmpty() || it.name.contains(q, true) }
+    val filtered = tables
+        .filter { q.isEmpty() || it.name.contains(q, true) }
+        .let { list ->
+            if (state.tableSort == NameOrder.Ascending) list.sortedBy { it.name.lowercase() }
+            else list.sortedByDescending { it.name.lowercase() }
+        }
     val selected = tables.firstOrNull { it.name == state.selectedTable }
 
     MasterDetail(
@@ -94,8 +117,9 @@ private fun TableList(state: InspectorState, tables: List<DbTable>) {
         ) {
             Text(
                 info?.let { "${it.fileName} · ${it.engine} · ${it.sizeLabel}" } ?: "database",
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
                 style = InspectorType.meta,
+                maxLines = 2,
             )
             HitTarget(onClick = { toggleSql(state, state.selectedTable) }) {
                 Row(
@@ -130,7 +154,9 @@ private fun TableList(state: InspectorState, tables: List<DbTable>) {
             }
             return@Column
         }
-        LazyColumn(Modifier.weight(1f)) {
+        val listState = rememberLazyListState()
+        Box(Modifier.weight(1f)) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             items(tables, key = { it.name }) { table ->
                 Row(
                     modifier = Modifier
@@ -173,6 +199,65 @@ private fun TableList(state: InspectorState, tables: List<DbTable>) {
                 Hairline(color = DebugPalette.lineFaint)
             }
         }
+        ScrollToTop(listState)
+        }
+        Hairline()
+        // Sort and refresh sit on the status line: it never scrolls, so nothing gets clipped.
+        StatusLine(text = "${tables.size} tables") {
+            SortToggle(state.tableSort, onToggle = { state.tableSort = state.tableSort.flip() })
+            Spacer(Modifier.width(8.dp))
+            RefreshButton()
+        }
+    }
+}
+
+/**
+ * Bottom-right of both Database panes. Re-reads the live database, or replays the open hooks.
+ * While the snapshot is in flight the arrow becomes a spinner. The spinner stays up for at least
+ * a second even when the read is instant, so the tap visibly did something, and a timeout clears
+ * it in case a host never answers.
+ */
+@Composable
+private fun RefreshButton() {
+    var refreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        snapshotFlow { InspectorStore.databaseRefreshing }.collect { active ->
+            if (!active) return@collect
+            refreshing = true
+            val started = TimeSource.Monotonic.markNow()
+            withTimeoutOrNull(10_000) {
+                snapshotFlow { InspectorStore.databaseRefreshing }.first { !it }
+            }
+            InspectorStore.databaseRefreshing = false
+            delay((1_000 - started.elapsedNow().inWholeMilliseconds).coerceAtLeast(0))
+            refreshing = false
+        }
+    }
+    HitTarget(onClick = { if (!refreshing) InspectorStore.refreshDatabase() }) {
+        Row(
+            modifier = Modifier
+                .height(32.dp)
+                .background(DebugPalette.activePillFill, RoundedCornerShape(16.dp))
+                .border(1.dp, DebugPalette.accent, RoundedCornerShape(16.dp))
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (refreshing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(12.dp),
+                    color = DebugPalette.accent,
+                    strokeWidth = 1.5.dp,
+                )
+            } else {
+                Text("↻", style = InspectorType.mono(11.5.sp, FontWeight.Medium, DebugPalette.accent))
+            }
+            Text(
+                if (refreshing) "Refreshing" else "Refresh",
+                modifier = Modifier.padding(start = 6.dp),
+                style = InspectorType.mono(11.5.sp, FontWeight.Medium, DebugPalette.accent),
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -191,6 +276,7 @@ private fun DatabaseDetail(table: DbTable?, state: InspectorState) {
                 modifier = Modifier.weight(1f),
                 style = InspectorType.mono(12.5.sp, FontWeight.Medium, DebugPalette.text),
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             HitTarget(onClick = { toggleSql(state, table?.name ?: result?.name) }) {
                 Row(
@@ -240,6 +326,12 @@ private fun DatabaseDetail(table: DbTable?, state: InspectorState) {
                 }
             }
         }
+        Hairline()
+        StatusLine(text = (result ?: table)?.let { "${it.rowCount} rows" } ?: "") {
+            SortToggle(state.rowSort, onToggle = { state.rowSort = state.rowSort.flip() })
+            Spacer(Modifier.width(8.dp))
+            RefreshButton()
+        }
         state.editingCell?.let { CellEditorSheet(it, state) }
     }
 }
@@ -265,8 +357,14 @@ private fun DataGrid(table: DbTable, state: InspectorState, readOnly: Boolean) {
                 restCols.forEach { HeaderCell(it.name, it.type, DebugPalette.surfaceRaised) }
             }
         }
-        LazyColumn(Modifier.fillMaxSize()) {
-            itemsIndexed(table.rows) { rowIndex, row ->
+        // Display order may be reversed, but edits address the original row index, so the pair
+        // travels together.
+        val ordered = table.rows.withIndex().toList()
+            .let { if (state.rowSort == SortOrder.NewestFirst) it.asReversed() else it }
+        val listState = rememberLazyListState()
+        Box(Modifier.fillMaxSize()) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            items(ordered, key = { it.index }) { (rowIndex, row) ->
                 Row(Modifier.fillMaxWidth()) {
                     GridCell(
                         value = row.getOrNull(0) ?: DbValue.Null,
@@ -297,6 +395,8 @@ private fun DataGrid(table: DbTable, state: InspectorState, readOnly: Boolean) {
                 }
                 Hairline(color = DebugPalette.lineFaint)
             }
+        }
+        ScrollToTop(listState)
         }
     }
 }
@@ -430,14 +530,17 @@ private fun CellEditorSheet(address: CellAddress, state: InspectorState) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SheetButton("Update row") { state.editingCell = null }
-            SheetButton("Set NULL") { state.cellDraft = "" }
+            SheetButton("Update row") { commitCell(state, state.cellDraft) }
+            SheetButton("Set NULL") { commitCell(state, null) }
             SheetButton("Cancel") { state.editingCell = null }
         }
+        val live = InspectorStore.databaseController != null &&
+            InspectorStore.tables.firstOrNull { it.name == address.table }?.rowIds != null
         Text(
-            "Writes go straight to the device database.",
+            if (live) "Writes go straight to the device database."
+            else "No live database attached: this edits the snapshot only.",
             modifier = Modifier.padding(top = 8.dp),
-            style = InspectorType.mono(10.5.sp, color = DebugPalette.warn),
+            style = InspectorType.mono(10.5.sp, color = if (live) DebugPalette.warn else DebugPalette.textFaint),
         )
     }
 }
@@ -455,6 +558,36 @@ private fun SheetButton(label: String, onClick: () -> Unit) {
             Text(label, style = InspectorType.mono(11.5.sp, color = DebugPalette.text), maxLines = 1)
         }
     }
+}
+
+/**
+ * Writes the edited cell. With a live database and a rowid the write goes to the host through
+ * [DatabaseController]; otherwise the snapshot itself is patched so the grid still reflects it.
+ */
+internal fun commitCell(state: InspectorState, value: String?) {
+    val address = state.editingCell ?: return
+    state.editingCell = null
+    val index = InspectorStore.tables.indexOfFirst { it.name == address.table }
+    if (index < 0) return
+    val table = InspectorStore.tables[index]
+    val rowId = table.rowIds?.getOrNull(address.rowIndex)
+    val controller = InspectorStore.databaseController
+    if (controller != null && rowId != null) {
+        controller.updateCell(table.name, rowId, address.column, value)
+        return
+    }
+    val col = table.columns.indexOfFirst { it.name == address.column }
+    val row = table.rows.getOrNull(address.rowIndex) ?: return
+    if (col < 0 || col >= row.size) return
+    val numeric = address.type.uppercase().let { it.contains("INT") || it.contains("REAL") || it.contains("NUM") }
+    val newValue = when {
+        value == null -> DbValue.Null
+        numeric && value.toDoubleOrNull() != null -> DbValue.Number(value)
+        else -> DbValue.Text(value)
+    }
+    val rows = table.rows.toMutableList()
+    rows[address.rowIndex] = row.toMutableList().also { it[col] = newValue }
+    InspectorStore.tables[index] = table.copy(rows = rows)
 }
 
 /** Results render in the same grid component: one presentation for browsing and querying. */

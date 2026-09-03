@@ -3,6 +3,7 @@ package com.waqas028.kmpinspector.presentation.common
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.shadow
+import com.waqas028.kmpinspector.presentation.NameOrder
+import com.waqas028.kmpinspector.presentation.SortOrder
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.Text
@@ -49,10 +65,16 @@ internal fun HitTarget(
     minSize: Dp = 48.dp,
     content: @Composable () -> Unit,
 ) {
+    // No ripple: the target is a 48dp square around a 32dp pill, so a ripple draws a box that
+    // matches nothing visible. The pill's own selected state is the feedback.
     Box(
         modifier = modifier
             .defaultMinSize(minWidth = minSize, minHeight = minSize)
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         // Children draw at their own (smaller) size; the box above carries the target.
@@ -94,6 +116,106 @@ internal fun FilterPill(
                 ),
                 maxLines = 1,
             )
+        }
+    }
+}
+
+/**
+ * The one-line footer under a list: a count on the left, and room on the right for a control
+ * that must never be clipped, such as the sort toggle. Unlike the filter rows it does not scroll.
+ */
+@Composable
+internal fun StatusLine(text: String, trailing: @Composable () -> Unit = {}) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, modifier = Modifier.weight(1f).padding(end = 8.dp), style = InspectorType.meta, maxLines = 2)
+        trailing()
+    }
+}
+
+/**
+ * The sort control. A word plus an arrow, not an icon alone: "↓ Newest" says both what the order is
+ * and which way it goes, where a bare swap-vert icon says neither.
+ */
+@Composable
+internal fun SortToggle(
+    label: String,
+    descending: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    HitTarget(onClick = onToggle, modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .height(32.dp)
+                .border(1.dp, DebugPalette.lineStrong, RoundedCornerShape(16.dp))
+                .padding(horizontal = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = (if (descending) "↓ " else "↑ ") + label,
+                style = InspectorType.mono(11.5.sp, FontWeight.Medium, DebugPalette.textDim),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SortToggle(order: SortOrder, onToggle: () -> Unit, modifier: Modifier = Modifier) =
+    SortToggle(
+        label = if (order == SortOrder.NewestFirst) "Newest" else "Oldest",
+        descending = order == SortOrder.NewestFirst,
+        onToggle = onToggle,
+        modifier = modifier,
+    )
+
+@Composable
+internal fun SortToggle(order: NameOrder, onToggle: () -> Unit, modifier: Modifier = Modifier) =
+    SortToggle(
+        label = if (order == NameOrder.Ascending) "A–Z" else "Z–A",
+        descending = order == NameOrder.Descending,
+        onToggle = onToggle,
+        modifier = modifier,
+    )
+
+/**
+ * A "back to top" pill that floats over a list once the reader has scrolled a few items down.
+ * Place it inside the same Box as the LazyColumn; it aligns itself to the bottom centre.
+ *
+ * It appears after [threshold] items rather than only at the very end, because the moment you
+ * want it is when the top is out of reach, not when you have read everything.
+ */
+@Composable
+internal fun BoxScope.ScrollToTop(listState: LazyListState, threshold: Int = 4) {
+    val scope = rememberCoroutineScope()
+    val visible by remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex >= threshold }
+    }
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
+        enter = fadeIn() + slideInVertically { it / 2 },
+        exit = fadeOut() + slideOutVertically { it / 2 },
+    ) {
+        HitTarget(onClick = { scope.launch { listState.animateScrollToItem(0) } }) {
+            Box(
+                modifier = Modifier
+                    .height(32.dp)
+                    .shadow(6.dp, RoundedCornerShape(16.dp))
+                    .background(DebugPalette.surfaceRaised, RoundedCornerShape(16.dp))
+                    .border(1.dp, DebugPalette.accent, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "↑ Top",
+                    style = InspectorType.mono(11.5.sp, FontWeight.Medium, DebugPalette.accent),
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

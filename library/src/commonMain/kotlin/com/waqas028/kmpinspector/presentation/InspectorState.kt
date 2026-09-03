@@ -22,6 +22,21 @@ internal enum class CrashFilter(val label: String) { All("All"), Fatal("Fatal"),
 internal enum class RequestDetailTab(val label: String) { Request("Request"), Response("Response"), Headers("Headers") }
 
 /**
+ * Every list defaults to newest first: the thing you just did is the thing you are looking for.
+ * The toggle flips to oldest first for reading a sequence in the order it happened.
+ */
+internal enum class SortOrder { NewestFirst, OldestFirst }
+
+internal fun SortOrder.flip(): SortOrder =
+    if (this == SortOrder.NewestFirst) SortOrder.OldestFirst else SortOrder.NewestFirst
+
+/** Table names have no time, so the Database list sorts by name instead. */
+internal enum class NameOrder { Ascending, Descending }
+
+internal fun NameOrder.flip(): NameOrder =
+    if (this == NameOrder.Ascending) NameOrder.Descending else NameOrder.Ascending
+
+/**
  * Three arrangements of one body. Breakpoints come straight from the handoff.
  */
 internal enum class PaneWidth { Compact, Medium, Expanded }
@@ -57,12 +72,16 @@ internal class InspectorState {
     var query by mutableStateOf("")
 
     var networkFilter by mutableStateOf(NetworkFilter.All)
+    var networkSort by mutableStateOf(SortOrder.NewestFirst)
     var selectedRequestId by mutableStateOf<Long?>(null)
     var requestDetailTab by mutableStateOf(RequestDetailTab.Response)
     val collapsedJsonPaths = mutableStateListOf<String>()
     var curlVisible by mutableStateOf(false)
 
     var selectedTable by mutableStateOf<String?>(null)
+    var tableSort by mutableStateOf(NameOrder.Ascending)
+    /** Rows come back in rowid order, so newest first means the last inserted row on top. */
+    var rowSort by mutableStateOf(SortOrder.NewestFirst)
     var sqlOpen by mutableStateOf(false)
     var sqlText by mutableStateOf("")
     var sqlError by mutableStateOf<String?>(null)
@@ -81,6 +100,7 @@ internal class InspectorState {
     var logLevel by mutableStateOf<LogLevel?>(null)
     var logTag by mutableStateOf<String?>(null)
     var tailing by mutableStateOf(true)
+    var logSort by mutableStateOf(SortOrder.NewestFirst)
     var pausedAt by mutableStateOf<String?>(null)
 
     var crashFilter by mutableStateOf(CrashFilter.All)
@@ -88,6 +108,7 @@ internal class InspectorState {
     var hideFrameworkFrames by mutableStateOf(false)
 
     var selectedWorkId by mutableStateOf<String?>(null)
+    var workSort by mutableStateOf(SortOrder.NewestFirst)
 
     /** Selection is per section and clears on tab change, along with the scoped query. */
     fun selectTab(next: InspectorTab) {

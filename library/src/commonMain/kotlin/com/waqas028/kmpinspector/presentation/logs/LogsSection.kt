@@ -36,10 +36,15 @@ import com.waqas028.kmpinspector.data.InspectorStore
 import com.waqas028.kmpinspector.data.formatClock
 import com.waqas028.kmpinspector.domain.model.LogLevel
 import com.waqas028.kmpinspector.presentation.InspectorState
+import com.waqas028.kmpinspector.presentation.SortOrder
+import com.waqas028.kmpinspector.presentation.flip
 import com.waqas028.kmpinspector.presentation.common.EmptyState
 import com.waqas028.kmpinspector.presentation.common.Hairline
 import com.waqas028.kmpinspector.presentation.common.NoResults
 import com.waqas028.kmpinspector.presentation.common.HitTarget
+import com.waqas028.kmpinspector.presentation.common.ScrollToTop
+import com.waqas028.kmpinspector.presentation.common.SortToggle
+import com.waqas028.kmpinspector.presentation.common.StatusLine
 import com.waqas028.kmpinspector.presentation.theme.DebugPalette
 import com.waqas028.kmpinspector.presentation.theme.Glyph
 import com.waqas028.kmpinspector.presentation.theme.InspectorIcon
@@ -54,7 +59,7 @@ private fun LogLevel.tone(): Color = when (this) {
     LogLevel.Debug, LogLevel.Verbose -> DebugPalette.textDim
 }
 
-/** Single full-width pane, chronological. Logs has no detail view. */
+/** Single full-width pane, newest line on top by default. Logs has no detail view. */
 @Composable
 internal fun LogsSection(state: InspectorState) {
     val all = InspectorStore.logs
@@ -74,12 +79,15 @@ internal fun LogsSection(state: InspectorState) {
         (state.logLevel == null || line.level == state.logLevel) &&
             (state.logTag == null || line.tag == state.logTag) &&
             (q.isEmpty() || line.message.contains(q, true) || line.tag.contains(q, true))
-    }
+    }.let { if (state.logSort == SortOrder.NewestFirst) it.asReversed() else it }
 
     val listState = rememberLazyListState()
-    // Search filters but does not stop tailing.
-    LaunchedEffect(filtered.size, state.tailing) {
-        if (state.tailing && filtered.isNotEmpty()) listState.scrollToItem(filtered.lastIndex)
+    // Tailing follows the live end of the list, which is the top when newest is first. Search
+    // filters but does not stop tailing.
+    LaunchedEffect(filtered.size, state.tailing, state.logSort) {
+        if (state.tailing && filtered.isNotEmpty()) {
+            listState.scrollToItem(if (state.logSort == SortOrder.NewestFirst) 0 else filtered.lastIndex)
+        }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -124,7 +132,8 @@ internal fun LogsSection(state: InspectorState) {
                 )
             }
         } else {
-        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+        Box(Modifier.weight(1f)) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             items(filtered, key = { it.id }) { line ->
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -165,17 +174,20 @@ internal fun LogsSection(state: InspectorState) {
                 Hairline(color = DebugPalette.lineFaint)
             }
         }
+        // Pausing on scroll would fight the user; the pill just offers the way back.
+        ScrollToTop(listState)
+        }
         }
 
         Hairline()
-        Text(
-            buildString {
+        StatusLine(
+            text = buildString {
                 append("${filtered.size} of ${all.size} lines · ring buffer ${InspectorStore.LOG_CAPACITY}")
                 append(if (state.tailing) " · live" else " · paused at ${state.pausedAt ?: "—"}")
             },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            style = InspectorType.meta,
-        )
+        ) {
+            SortToggle(state.logSort, onToggle = { state.logSort = state.logSort.flip() })
+        }
     }
 }
 

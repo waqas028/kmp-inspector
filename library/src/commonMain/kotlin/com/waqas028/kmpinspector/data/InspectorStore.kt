@@ -3,6 +3,7 @@ package com.waqas028.kmpinspector.data
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import com.waqas028.kmpinspector.domain.model.CrashRecord
+import com.waqas028.kmpinspector.domain.model.DatabaseController
 import com.waqas028.kmpinspector.domain.model.DbInfo
 import com.waqas028.kmpinspector.domain.model.DbTable
 import com.waqas028.kmpinspector.domain.model.LogLine
@@ -27,6 +28,11 @@ internal object InspectorStore {
     val tables = mutableStateListOf<DbTable>()
 
     var database by mutableStateOf<DbInfo?>(null)
+    /** Live handle behind [database], when the host has one. */
+    var databaseController by mutableStateOf<DatabaseController?>(null)
+
+    /** True from a Refresh tap until the next snapshot lands; drives the button's spinner. */
+    var databaseRefreshing by mutableStateOf(false)
     var appId by mutableStateOf("unknown")
     /** Host-supplied label for the work engine, e.g. "WorkManager 2.11". */
     var workLabel by mutableStateOf<String?>(null)
@@ -117,6 +123,7 @@ internal object InspectorStore {
     fun clear() {
         requests.clear(); logs.clear(); crashes.clear(); work.clear(); tables.clear()
         database = null
+        databaseController = null
         unreadCount = 0
         unreadCrashes = 0
         runCatching { CrashFile.clear() }
@@ -140,5 +147,11 @@ internal object InspectorStore {
 
     fun notifyOpened() {
         openListeners.toList().forEach { runCatching(it) }
+    }
+
+    /** Refresh button: ask the live database if there is one, else replay the open hooks. */
+    fun refreshDatabase() {
+        databaseRefreshing = true
+        databaseController?.refresh() ?: notifyOpened()
     }
 }

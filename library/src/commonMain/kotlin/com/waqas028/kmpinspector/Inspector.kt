@@ -4,6 +4,7 @@ import com.waqas028.kmpinspector.data.InspectorPlatform
 import com.waqas028.kmpinspector.data.InspectorStore
 import com.waqas028.kmpinspector.data.installPlatformCrashHandler
 import com.waqas028.kmpinspector.domain.model.CrashRecord
+import com.waqas028.kmpinspector.domain.model.DatabaseController
 import com.waqas028.kmpinspector.domain.model.DbInfo
 import com.waqas028.kmpinspector.domain.model.DbTable
 import com.waqas028.kmpinspector.domain.model.NetworkRequest
@@ -90,6 +91,9 @@ object Inspector {
     /**
      * Replaces the Background Work list. Android-only in the UI; a no-op tab elsewhere.
      *
+     * Pass [jobs] newest first: the panel shows them in this order by default and its sort toggle
+     * simply reverses it.
+     *
      * [engineLabel] is shown above the list, e.g. "WorkManager 2.11" — the inspector has no way to
      * discover the scheduler's version itself.
      */
@@ -99,8 +103,15 @@ object Inspector {
         InspectorStore.workLabel = engineLabel
     }
 
-    fun setDatabase(info: DbInfo, tables: List<DbTable>) {
+    /**
+     * Replaces the Database panel's contents. Pass a [controller] when the tables come from a live
+     * database, so the Refresh button re-reads it and cell edits are written back; without one the
+     * panel edits the snapshot in memory only.
+     */
+    fun setDatabase(info: DbInfo, tables: List<DbTable>, controller: DatabaseController? = null) {
         InspectorStore.database = info
+        InspectorStore.databaseController = controller
+        InspectorStore.databaseRefreshing = false
         InspectorStore.tables.clear()
         InspectorStore.tables.addAll(tables)
     }

@@ -34,7 +34,8 @@ internal object WorkManagerCollector {
         val label = "WorkManager"
 
         manager.getWorkInfosFlow(WorkQuery.fromStates(WorkInfo.State.entries))
-            .onEach { infos -> Inspector.setWork(infos.map { it.toWorkJob() }, label) }
+            // WorkManager returns rows in insertion order; the panel wants the newest job on top.
+            .onEach { infos -> Inspector.setWork(infos.asReversed().map { it.toWorkJob() }, label) }
             .launchIn(scope)
     }
 
