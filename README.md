@@ -26,7 +26,7 @@ KmpInspector is a floating bubble you wrap your UI with once. Tapping it opens a
 | iOS | `iosArm64`, `iosSimulatorArm64` |
 | Desktop (JVM) | Windows, macOS, Linux |
 
-> **Requirement:** KmpInspector is a Compose overlay. The UI you wrap must be built with Compose (Jetpack Compose on Android, Compose Multiplatform on iOS/desktop). You can record data from any code, but the inspector itself renders on a Compose surface.
+> **Requirement:** KmpInspector renders on a Compose surface. On Android it injects that surface itself, so XML, Fragment and mixed apps work with no Compose code of your own. On iOS and desktop the UI you wrap must be Compose Multiplatform.
 
 ## Installation
 
@@ -67,6 +67,48 @@ dependencyResolutionManagement {
 
 ## Quick start
 
+### Which setup do I need?
+
+| Your app | Setup | What fills itself | What you feed by hand |
+|---|---|---|---|
+| **Android** — XML, Fragments, Jetpack Compose, or a mix | `KmpInspector.install(this)` in `Application`, plus one line for OkHttp and one for Room | Bubble on every screen, crashes, logs (logcat), background work (WorkManager), network (OkHttp), database (Room) | Nothing, unless you use another HTTP client or database |
+| **Compose Multiplatform** — Android target | Same as Android above. `install` in the Android `Application`; do not also wrap on Android | Same as Android | Nothing |
+| **Compose Multiplatform** — iOS and desktop targets | Wrap the root composable in `KmpInspector { }` | The bubble and the inspector UI only | Everything: `Inspector.recordRequest`, `Inspector.setDatabase`, `Inspector.setWork`, `InspectorLog`, `Inspector.installCrashHandler` |
+
+The short rule: on Android the library collects on its own; off Android it draws the UI and you feed it. A Ktor plugin that would give the Network panel to iOS and desktop automatically is the next planned collector.
+
+### Android: one call, nothing to wrap
+
+```kotlin
+import com.waqas028.kmpinspector.KmpInspector
+
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        KmpInspector.install(this)
+    }
+}
+```
+
+That single call floats the bubble over **every** Activity (XML, Fragments, Compose, or a mix), captures fatal crashes across restarts, streams the app's own logcat into the Logs panel, and mirrors WorkManager's job list into Background Work when WorkManager is on your classpath. It is a no-op unless the build is `debuggable`, so release builds get nothing.
+
+Two sources cannot be discovered from outside your code and stay one line each:
+
+```kotlin
+// Network — add after your header interceptors so the recorded request is what was sent
+OkHttpClient.Builder()
+    .addInterceptor(KmpInspectorInterceptor())   // com.waqas028.kmpinspector.okhttp
+
+// Database — Room 2.7+. Snapshots now and again each time the inspector is opened
+KmpInspector.attach(database, fileName = "app.db")
+```
+
+`install` takes a few options: `enabled` (defaults to the manifest's debuggable flag), `appPackagePrefix` for highlighting your stack frames, `captureLogcat`, `captureWorkManager`, and `excludeActivity` for screens that should not get the bubble, such as a splash. `appPackagePrefix` defaults to the application id; if your flavors use an `applicationIdSuffix`, pass your source package (for example `"com.example.shop"`) so the highlighted frames are really yours. Do not also wrap Compose content in `KmpInspector { }` on Android when using `install`, or you will see two bubbles.
+
+OkHttp, Room and WorkManager are `compileOnly` dependencies of the library. You only need them on your classpath if you use that collector.
+
+### Compose Multiplatform: wrap once
+
 Wrap your root composable once. The bubble and the whole inspector come from the library — you build none of that UI yourself.
 
 ```kotlin
@@ -86,11 +128,15 @@ That's the whole visual integration. A draggable bubble now floats over your app
 
 If you have a **shared Compose Multiplatform module**, wrap your UI here once and every platform gets the overlay for free — then each platform just hosts this `App()` in its native entry point, as shown below.
 
+The wrapper draws the UI; it does not collect anything. On iOS and desktop every panel stays empty until your code reports into it — see [Feeding it data](#feeding-it-data). On the Android target, prefer `KmpInspector.install(this)` in your `Application` instead of wrapping, and you get the collectors listed above for free. If you wrap in shared code *and* call `install` on Android, pass `enabled = !isAndroid` (or similar) to the wrapper so Android does not show two bubbles.
+
 ## Platform setup
 
 The examples below host the same `App()` composable on each platform. If your app is single-platform, use the section that applies.
 
 ### Android
+
+If you used `KmpInspector.install(this)` above, there is nothing else to do on Android and you can skip this section. The manual route below is for apps that prefer to place the overlay themselves.
 
 Jetpack Compose apps host `App()` in an `Activity`:
 
@@ -174,7 +220,7 @@ fun main() = application {
 
 ## Feeding it data
 
-The inspector shows what you give it, through the `Inspector` and `InspectorLog` entry points. Call `Inspector.configure(...)` once at startup, then record data wherever it happens in your app.
+On Android, `install` plus the OkHttp interceptor and `attach` cover the common sources. Everything else, and every source on iOS and desktop, goes through the `Inspector` and `InspectorLog` entry points. Call `Inspector.configure(...)` once at startup, then record data wherever it happens in your app.
 
 ```kotlin
 import com.waqas028.kmpinspector.Inspector

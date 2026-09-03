@@ -127,4 +127,18 @@ internal object InspectorStore {
     }
 
     internal fun nextPublicId(): Long = nextId()
+
+    /**
+     * Called every time the inspector is opened. Collectors that hold a snapshot rather than a
+     * stream (the database) use this to refresh, so what you see is current as of the tap.
+     */
+    private val openListeners = mutableListOf<() -> Unit>()
+
+    fun addOpenListener(listener: () -> Unit) {
+        openListeners += listener
+    }
+
+    fun notifyOpened() {
+        openListeners.toList().forEach { runCatching(it) }
+    }
 }

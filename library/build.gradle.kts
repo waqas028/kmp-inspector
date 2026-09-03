@@ -56,6 +56,14 @@ kotlin {
             implementation(compose.components.resources)
         }
 
+        androidMain.dependencies {
+            implementation(libs.kotlinx.coroutines.android)
+            implementation(libs.androidx.lifecycle.runtime)
+            compileOnly(libs.okhttp)
+            compileOnly(libs.room.runtime)
+            compileOnly(libs.androidx.work.runtime.ktx)
+        }
+
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }

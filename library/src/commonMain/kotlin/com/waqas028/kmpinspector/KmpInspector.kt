@@ -60,6 +60,7 @@ fun KmpInspector(
                 onClick = {
                     // Tapping clears the unread count and opens the inspector.
                     InspectorStore.markRead()
+                    InspectorStore.notifyOpened()
                     open = true
                 },
             )

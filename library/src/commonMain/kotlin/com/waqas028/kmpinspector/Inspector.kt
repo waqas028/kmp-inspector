@@ -105,5 +105,11 @@ object Inspector {
         InspectorStore.tables.addAll(tables)
     }
 
+    /**
+     * Runs [listener] each time the inspector is opened. Use it to push a fresh snapshot of
+     * anything that is not a live stream, so the panels show current data as of the tap.
+     */
+    fun onOpen(listener: () -> Unit) = InspectorStore.addOpenListener(listener)
+
     fun clear() = InspectorStore.clear()
 }
