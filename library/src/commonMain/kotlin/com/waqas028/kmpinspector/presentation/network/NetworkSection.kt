@@ -50,6 +50,7 @@ import com.waqas028.kmpinspector.data.formatClock
 import com.waqas028.kmpinspector.data.formatDuration
 import com.waqas028.kmpinspector.data.isBranch
 import com.waqas028.kmpinspector.data.parseJsonOrNull
+import com.waqas028.kmpinspector.domain.model.HttpHeader
 import com.waqas028.kmpinspector.domain.model.HttpOutcome
 import com.waqas028.kmpinspector.domain.model.NetworkRequest
 import com.waqas028.kmpinspector.presentation.InspectorState
@@ -105,8 +106,8 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
         EmptyState(
             glyph = Glyph.SwapVert,
             title = "No requests captured",
-            sentence = "Install the inspector plugin on your HTTP client and requests will appear here as they run.",
-            snippet = "HttpClient { install(InspectorPlugin) }",
+            sentence = "On Android, add the interceptor to your OkHttp client. Elsewhere, call Inspector.recordRequest from your HTTP client's hook.",
+            snippet = "OkHttpClient.Builder()\n    .addInterceptor(KmpInspectorInterceptor())",
         )
         return
     }
@@ -363,7 +364,7 @@ private fun NetworkDetail(request: NetworkRequest, state: InspectorState, pane: 
 
         when (tab) {
             RequestDetailTab.Headers -> headerItems(request)
-            else -> bodyItems(body, request.contentType, bytes, node, rows, state)
+            else -> bodyItems(body, request.contentType, bytes, node, rows, state, request.bodiesEvicted)
         }
 
         // Reveal the exact command, so the developer can see what went to the clipboard.
@@ -489,8 +490,9 @@ private fun ShareRequest(request: NetworkRequest, tab: RequestDetailTab, curl: S
             onDismissRequest = { open = false },
             modifier = Modifier.background(DebugPalette.surfaceRaised),
         ) {
-            ShareItem("cURL") { open = false; InspectorShare.share(curl, subject) }
-            ShareItem("Text") { open = false; InspectorShare.share(shareableText(request), subject) }
+            // Shares leave the device, so secrets are masked; the clipboard copy stays verbatim.
+            ShareItem("cURL") { open = false; InspectorShare.share(curlFor(request, redact = true), subject) }
+            ShareItem("Text") { open = false; InspectorShare.share(shareableText(request, redact = true), subject) }
             ShareItem("Body") {
                 open = false
                 // The tab you are looking at decides which body goes out.
@@ -512,8 +514,11 @@ private fun ShareItem(label: String, onClick: () -> Unit) {
     )
 }
 
+private fun HttpHeader.displayValue(redact: Boolean): String =
+    if (redact && name.lowercase() in InspectorStore.redactedHeaders) "<redacted>" else value
+
 /** The whole exchange as plain text, in the order the tabs show it: headers, request, response. */
-internal fun shareableText(request: NetworkRequest): String = buildString {
+internal fun shareableText(request: NetworkRequest, redact: Boolean = false): String = buildString {
     append(request.method).append(' ').append(request.url).append('\n')
     append(request.statusCode?.toString() ?: "ERR")
     if (request.reasonPhrase.isNotEmpty()) append(' ').append(request.reasonPhrase)
@@ -530,7 +535,7 @@ internal fun shareableText(request: NetworkRequest): String = buildString {
     }
     if (request.requestHeaders.isNotEmpty()) {
         section("Request headers") {
-            request.requestHeaders.forEach { append(it.name).append(": ").append(it.value).append('\n') }
+            request.requestHeaders.forEach { append(it.name).append(": ").append(it.displayValue(redact)).append('\n') }
         }
     }
     request.requestBody?.takeIf { it.isNotBlank() }?.let { body ->
@@ -538,7 +543,7 @@ internal fun shareableText(request: NetworkRequest): String = buildString {
     }
     if (request.responseHeaders.isNotEmpty()) {
         section("Response headers") {
-            request.responseHeaders.forEach { append(it.name).append(": ").append(it.value).append('\n') }
+            request.responseHeaders.forEach { append(it.name).append(": ").append(it.displayValue(redact)).append('\n') }
         }
     }
     request.responseBody?.takeIf { it.isNotBlank() }?.let { body ->
@@ -546,9 +551,9 @@ internal fun shareableText(request: NetworkRequest): String = buildString {
     }
 }
 
-private fun curlFor(request: NetworkRequest): String = buildString {
+private fun curlFor(request: NetworkRequest, redact: Boolean = false): String = buildString {
     append("curl -X ").append(request.method).append(" '").append(request.url).append("'")
-    request.requestHeaders.forEach { append(" \\\n  -H '").append(it.name).append(": ").append(it.value).append("'") }
+    request.requestHeaders.forEach { append(" \\\n  -H '").append(it.name).append(": ").append(it.displayValue(redact)).append("'") }
     request.requestBody?.let { append(" \\\n  --data '").append(it).append("'") }
 }
 
@@ -562,11 +567,13 @@ private fun LazyListScope.bodyItems(
     node: JsonNode?,
     rows: List<JsonRow>,
     state: InspectorState,
+    evicted: Boolean,
 ) {
     if (body.isNullOrBlank()) {
         item("no-body") {
             Text(
-                "No body",
+                if (evicted) "Body released to stay inside the ${formatBytes(InspectorStore.BODY_BUDGET_CHARS.toLong())} memory budget; newer requests keep theirs."
+                else "No body",
                 modifier = Modifier.padding(top = 16.dp),
                 style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
             )

@@ -117,6 +117,15 @@ object Inspector {
     }
 
     /**
+     * Header names (case-insensitive) whose values are masked in anything shared off the device.
+     * Defaults cover Authorization, Cookie, Set-Cookie, Proxy-Authorization and X-Api-Key; pass an
+     * empty set to share everything verbatim.
+     */
+    fun redactHeaders(names: Set<String>) {
+        InspectorStore.redactedHeaders = names.map { it.lowercase() }.toSet()
+    }
+
+    /**
      * Runs [listener] each time the inspector is opened. Use it to push a fresh snapshot of
      * anything that is not a live stream, so the panels show current data as of the tap.
      */

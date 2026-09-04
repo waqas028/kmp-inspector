@@ -33,6 +33,10 @@ kotlin {
             enable = true
         }
 
+        // R8 rules for consumers, packaged as the AAR's proguard.txt. See consumer-rules.pro.
+        optimization.consumerKeepRules.publish = true
+        optimization.consumerKeepRules.files.add(file("consumer-rules.pro"))
+
         withJava() // enable java compilation support
         withHostTestBuilder {}.configure {}
         withDeviceTestBuilder {

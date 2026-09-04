@@ -3,6 +3,7 @@ package com.waqas028.kmpinspector.presentation.logs
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.waqas028.kmpinspector.data.InspectorPlatform
 import com.waqas028.kmpinspector.data.InspectorStore
 import com.waqas028.kmpinspector.data.formatClock
 import com.waqas028.kmpinspector.domain.model.LogLevel
@@ -87,6 +89,16 @@ internal fun LogsSection(state: InspectorState) {
     LaunchedEffect(filtered.size, state.tailing, state.logSort) {
         if (state.tailing && filtered.isNotEmpty()) {
             listState.scrollToItem(if (state.logSort == SortOrder.NewestFirst) 0 else filtered.lastIndex)
+        }
+    }
+    // A finger on the list means the reader wants to read, so tailing pauses instead of yanking
+    // the list back to the live end on the next batch. Tapping Tailing resumes and re-snaps.
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect { interaction ->
+            if (interaction is DragInteraction.Start && state.tailing) {
+                state.tailing = false
+                state.pausedAt = formatClock(InspectorPlatform.currentTimeMillis())
+            }
         }
     }
 

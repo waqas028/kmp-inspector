@@ -46,7 +46,9 @@ class KmpInspectorInterceptor @JvmOverloads constructor(
 
     private fun record(request: Request, startedAt: Long, response: Response?, error: IOException?) {
         runCatching {
-            val peeked = response?.peekBody(maxBodyBytes)
+            // Only text is worth copying. Peeking first would buffer every image and file download
+            // that shares the client, which is exactly what an image loader does.
+            val peeked = response?.takeIf { it.body?.contentType().isText() }?.peekBody(maxBodyBytes)
             Inspector.recordRequest(
                 NetworkRequest(
                     id = ids.incrementAndGet(),
@@ -65,9 +67,7 @@ class KmpInspectorInterceptor @JvmOverloads constructor(
                     requestHeaders = request.headers.toInspector(),
                     responseHeaders = response?.headers?.toInspector().orEmpty(),
                     requestBody = request.bodyText(),
-                    responseBody = peeked?.let { body ->
-                        if (body.contentType().isText()) body.string() else null
-                    },
+                    responseBody = peeked?.string(),
                     contentType = response?.header("Content-Type"),
                     errorText = error?.toString(),
                 ),

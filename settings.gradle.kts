@@ -15,5 +15,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "KmpInspector"
 include(":library")
+include(":library-noop")
 include(":sample:shared")
 include(":sample:androidApp")

@@ -148,5 +148,12 @@ internal data class CellAddress(
     val type: String,
 )
 
+/**
+ * One instance for the process, not one per composition: on Android every Activity hosts its own
+ * overlay, and a rotation recreates it, so per-composition state would forget the open tab and
+ * selection each time the screen changed underneath the inspector.
+ */
+private val sharedState = InspectorState()
+
 @Composable
-internal fun rememberInspectorState(): InspectorState = remember { InspectorState() }
+internal fun rememberInspectorState(): InspectorState = sharedState

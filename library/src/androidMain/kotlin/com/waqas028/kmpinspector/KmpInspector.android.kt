@@ -41,6 +41,9 @@ import com.waqas028.kmpinspector.data.initializeInspector
  */
 object KmpInspector {
 
+    @Volatile
+    private var installed = false
+
     fun install(
         application: Application,
         enabled: Boolean = application.isDebuggable(),
@@ -50,7 +53,8 @@ object KmpInspector {
         /** Return true for Activities that should not get the bubble, e.g. a splash screen. */
         excludeActivity: (Activity) -> Boolean = { false },
     ) {
-        if (!enabled) return
+        if (!enabled || installed) return
+        installed = true
 
         initializeInspector(application)
         Inspector.configure(appId = application.packageName, variant = "debug")

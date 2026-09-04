@@ -3,7 +3,6 @@ package com.waqas028.kmpinspector
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.waqas028.kmpinspector.data.InspectorStore
@@ -11,8 +10,6 @@ import com.waqas028.kmpinspector.presentation.bubble.InspectorBubble
 import com.waqas028.kmpinspector.presentation.rememberInspectorState
 import com.waqas028.kmpinspector.presentation.theme.ProvideInspectorFonts
 import com.waqas028.kmpinspector.presentation.shell.InspectorShell
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 
 /**
  * Wraps [content] and floats a draggable inspector bubble over it. Callers get the bubble and the
@@ -47,7 +44,7 @@ fun KmpInspector(
     // Crashes written by a previous run are loaded once, before anything reads the list.
     remember { InspectorStore.restoreCrashes() }
 
-    var open by remember { mutableStateOf(false) }
+    val open = InspectorStore.inspectorOpen
     val state = rememberInspectorState()
 
     Box(Modifier.fillMaxSize()) {
@@ -61,11 +58,11 @@ fun KmpInspector(
                     // Tapping clears the unread count and opens the inspector.
                     InspectorStore.markRead()
                     InspectorStore.notifyOpened()
-                    open = true
+                    InspectorStore.inspectorOpen = true
                 },
             )
         } else {
-            InspectorShell(state = state, onClose = { open = false })
+            InspectorShell(state = state, onClose = { InspectorStore.inspectorOpen = false })
         }
     }
 }

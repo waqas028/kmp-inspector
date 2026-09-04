@@ -10,49 +10,54 @@ KmpInspector is a floating bubble you wrap your UI with once. Tapping it opens a
 
 ## What it shows
 
-| Panel | What you see |
-|---|---|
-| **Network** | Requests with method, URL, status code, duration, and payload sizes |
-| **Database** | Your database info and table contents |
-| **Background Work** | Scheduled/queued jobs (Android WorkManager; a quiet tab elsewhere) |
-| **Logs** | A 2,000-line ring buffer, filterable by level |
-| **Crashes** | Fatal crashes kept across restarts, plus non-fatal exceptions you record |
+| Panel               | What you see                                                             |
+|---------------------|--------------------------------------------------------------------------|
+| **Network**         | Requests with method, URL, status code, duration, and payload sizes      |
+| **Database**        | Your database info and table contents                                    |
+| **Background Work** | Scheduled/queued jobs (Android WorkManager; a quiet tab elsewhere)       |
+| **Logs**            | A 2,000-line ring buffer, filterable by level                            |
+| **Crashes**         | Fatal crashes kept across restarts, plus non-fatal exceptions you record |
 
 ## Supported platforms
 
-| Platform | Target |
-|---|---|
-| Android | `minSdk 24`+ |
-| iOS | `iosArm64`, `iosSimulatorArm64` |
-| Desktop (JVM) | Windows, macOS, Linux |
+| Platform      | Target                          |
+|---------------|---------------------------------|
+| Android       | `minSdk 24`+                    |
+| iOS           | `iosArm64`, `iosSimulatorArm64` |
+| Desktop (JVM) | Windows, macOS, Linux           |
 
 > **Requirement:** KmpInspector renders on a Compose surface. On Android it injects that surface itself, so XML, Fragment and mixed apps work with no Compose code of your own. On iOS and desktop the UI you wrap must be Compose Multiplatform.
 
 ## Installation
 
-Add the dependency to the module that holds your Compose UI. Use the latest version from the badge above.
+Use the real artifact in debug builds and the `no-op` twin in release. The no-op has the same classes and signatures with empty bodies, so every call site compiles and your release APK carries no inspector code, fonts or collectors. Use the latest version from the badge above.
 
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("io.github.waqas028:kmp-inspector:1.0.0-beta01")
+    debugImplementation("io.github.waqas028:kmp-inspector:1.0.0-beta03")
+    releaseImplementation("io.github.waqas028:kmp-inspector-no-op:1.0.0-beta03")
 }
 ```
 
-Using a version catalog? Add it to `gradle/libs.versions.toml`:
+Using a version catalog? Add both to `gradle/libs.versions.toml`:
 
 ```toml
 [versions]
-kmp-inspector = "1.0.0-beta01"
+kmp-inspector = "1.0.0-beta03"
 
 [libraries]
 kmp-inspector = { module = "io.github.waqas028:kmp-inspector", version.ref = "kmp-inspector" }
+kmp-inspector-noop = { module = "io.github.waqas028:kmp-inspector-no-op", version.ref = "kmp-inspector" }
 ```
 
 ```kotlin
 // build.gradle.kts
-implementation(libs.kmp.inspector)
+debugImplementation(libs.kmp.inspector)
+releaseImplementation(libs.kmp.inspector.noop)
 ```
+
+A Compose Multiplatform shared module has no debug/release split of its own, so add the real artifact there with `implementation` and rely on `KmpInspector(enabled = ...)` and `install(enabled = ...)` to switch it off; both are no-ops when disabled, and the artifact ships the R8 rules it needs.
 
 Make sure `mavenCentral()` is in your repositories (in `settings.gradle.kts`):
 
@@ -69,11 +74,11 @@ dependencyResolutionManagement {
 
 ### Which setup do I need?
 
-| Your app | Setup | What fills itself | What you feed by hand |
-|---|---|---|---|
-| **Android** — XML, Fragments, Jetpack Compose, or a mix | `KmpInspector.install(this)` in `Application`, plus one line for OkHttp and one for Room | Bubble on every screen, crashes, logs (logcat), background work (WorkManager), network (OkHttp), database (Room) | Nothing, unless you use another HTTP client or database |
-| **Compose Multiplatform** — Android target | Same as Android above. `install` in the Android `Application`; do not also wrap on Android | Same as Android | Nothing |
-| **Compose Multiplatform** — iOS and desktop targets | Wrap the root composable in `KmpInspector { }` | The bubble and the inspector UI only | Everything: `Inspector.recordRequest`, `Inspector.setDatabase`, `Inspector.setWork`, `InspectorLog`, `Inspector.installCrashHandler` |
+| Your app                                                | Setup                                                                                      | What fills itself                                                                                                | What you feed by hand                                                                                                                |
+|---------------------------------------------------------|--------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| **Android** — XML, Fragments, Jetpack Compose, or a mix | `KmpInspector.install(this)` in `Application`, plus one line for OkHttp and one for Room   | Bubble on every screen, crashes, logs (logcat), background work (WorkManager), network (OkHttp), database (Room) | Nothing, unless you use another HTTP client or database                                                                              |
+| **Compose Multiplatform** — Android target              | Same as Android above. `install` in the Android `Application`; do not also wrap on Android | Same as Android                                                                                                  | Nothing                                                                                                                              |
+| **Compose Multiplatform** — iOS and desktop targets     | Wrap the root composable in `KmpInspector { }`                                             | The bubble and the inspector UI only                                                                             | Everything: `Inspector.recordRequest`, `Inspector.setDatabase`, `Inspector.setWork`, `InspectorLog`, `Inspector.installCrashHandler` |
 
 The short rule: on Android the library collects on its own; off Android it draws the UI and you feed it. A Ktor plugin that would give the Network panel to iOS and desktop automatically is the next planned collector.
 
@@ -106,6 +111,10 @@ KmpInspector.attach(database, fileName = "app.db")
 `install` takes a few options: `enabled` (defaults to the manifest's debuggable flag), `appPackagePrefix` for highlighting your stack frames, `captureLogcat`, `captureWorkManager`, and `excludeActivity` for screens that should not get the bubble, such as a splash. `appPackagePrefix` defaults to the application id; if your flavors use an `applicationIdSuffix`, pass your source package (for example `"com.example.shop"`) so the highlighted frames are really yours. Do not also wrap Compose content in `KmpInspector { }` on Android when using `install`, or you will see two bubbles.
 
 OkHttp, Room and WorkManager are `compileOnly` dependencies of the library. You only need them on your classpath if you use that collector.
+
+### Sharing safely
+
+Share as cURL or Text masks `Authorization`, `Cookie`, `Set-Cookie`, `Proxy-Authorization` and `X-Api-Key` values, since shared text tends to end up in chats. The Headers tab and the clipboard copy stay verbatim. Change the list with `Inspector.redactHeaders(setOf(...))`, or pass an empty set to share everything.
 
 ### Compose Multiplatform: wrap once
 
@@ -268,15 +277,19 @@ The handler delegates to whatever was installed before it, so an existing crash 
 
 ## Keeping it out of release builds
 
-The overlay is opt-in — it never appears unless you wrap something — but you'll also want it gone in production. Pass your own debug flag:
+The `debugImplementation` / `releaseImplementation` split from [Installation](#installation) is the complete answer on Android: release builds link the no-op artifact and contain nothing from the inspector.
+
+Where that split is not available, such as a shared Compose Multiplatform module, pass your own flag instead. Both entry points are no-ops when disabled:
 
 ```kotlin
-KmpInspector(enabled = BuildConfig.DEBUG) {
+KmpInspector(enabled = isDebugBuild) {
     MyAppContent()
 }
+
+KmpInspector.install(this, enabled = BuildConfig.DEBUG)   // Android Application
 ```
 
-With `enabled = false` the composable renders your content directly, so nothing from the inspector enters the composition.
+With `enabled = false` the composable renders your content directly and `install` returns before touching anything, so nothing from the inspector enters the composition or the process.
 
 ## Sample app
 

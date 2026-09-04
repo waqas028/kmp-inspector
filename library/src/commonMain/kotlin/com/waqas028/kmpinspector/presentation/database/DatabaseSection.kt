@@ -77,8 +77,8 @@ internal fun DatabaseSection(state: InspectorState, pane: PaneWidth) {
         EmptyState(
             glyph = Glyph.TableChart,
             title = "No database registered",
-            sentence = "Hand the inspector your schema and it will browse tables, run read-only queries and edit cells.",
-            snippet = "Inspector.setDatabase(info, tables)",
+            sentence = "On Android, attach your Room database and the inspector browses its tables and writes cell edits back. Elsewhere, hand it a snapshot.",
+            snippet = "KmpInspector.attach(database, fileName = \"app.db\")",
         )
         return
     }

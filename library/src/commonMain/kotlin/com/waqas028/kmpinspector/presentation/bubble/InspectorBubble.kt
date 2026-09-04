@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import com.waqas028.kmpinspector.data.InspectorStore
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -77,8 +79,26 @@ internal fun InspectorBubble(
 
         var dragging by remember { mutableStateOf(false) }
         var pressed by remember { mutableStateOf(false) }
-        var edge by remember { mutableStateOf(SnapEdge.Right) }
-        var position by remember { mutableStateOf<Offset?>(null) }
+        // Seeded from the shared store and written back on every change, so the bubble stays
+        // where it was dragged across Activities and rotations. Clamped, because the last screen
+        // may have been a different size.
+        var edge by remember {
+            mutableStateOf(if (InspectorStore.bubbleOnRight) SnapEdge.Right else SnapEdge.Left)
+        }
+        var position by remember {
+            mutableStateOf(
+                InspectorStore.bubblePosition?.let {
+                    Offset(
+                        it.x.coerceIn(0f, (maxX - bubblePx).coerceAtLeast(0f)),
+                        it.y.coerceIn(0f, (maxY - bubblePx).coerceAtLeast(0f)),
+                    )
+                },
+            )
+        }
+        LaunchedEffect(position, edge) {
+            InspectorStore.bubblePosition = position
+            InspectorStore.bubbleOnRight = edge == SnapEdge.Right
+        }
 
         val current = position ?: Offset(maxX - bubblePx, maxY * 0.62f)
 

@@ -11,6 +11,8 @@ import com.waqas028.kmpinspector.domain.model.NetworkRequest
 import com.waqas028.kmpinspector.domain.model.WorkJob
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.geometry.Offset
+import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
@@ -23,6 +25,28 @@ internal object InspectorStore {
 
     const val NETWORK_CAPACITY = 200
     const val LOG_CAPACITY = 2_000
+
+    /**
+     * Total request + response body text kept across the network buffer. 200 entries at up to
+     * 256 KB each way could pin 100 MB; past this budget the oldest entries keep their metadata
+     * and lose their bodies.
+     */
+    const val BODY_BUDGET_CHARS = 16 * 1024 * 1024
+
+    /**
+     * Header names whose values are masked in anything that leaves the device through Share.
+     * The in-app Headers tab and the clipboard still show them in full.
+     */
+    var redactedHeaders: Set<String> = setOf("authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key")
+
+    /**
+     * Whether the inspector is open, and where the bubble sits. Shared rather than remembered per
+     * composition, so the overlay on the next Activity, or after a rotation, picks up where the
+     * last one left off instead of resetting.
+     */
+    var inspectorOpen by mutableStateOf(false)
+    var bubblePosition by mutableStateOf<Offset?>(null)
+    var bubbleOnRight by mutableStateOf(true)
 
     val requests = mutableStateListOf<NetworkRequest>()
     val logs = mutableStateListOf<LogLine>()
@@ -54,10 +78,30 @@ internal object InspectorStore {
     @OptIn(ExperimentalAtomicApi::class)
     private fun nextId(): Long = nextId.incrementAndFetch()
 
+    // Requests arrive on HTTP client threads; a plain ++ on snapshot state can lose increments.
+    @OptIn(ExperimentalAtomicApi::class)
+    private val unread = AtomicInt(0)
+
+    @OptIn(ExperimentalAtomicApi::class)
     fun addRequest(request: NetworkRequest) {
         requests.add(0, request)
         trim(requests, NETWORK_CAPACITY)
-        unreadCount++
+        enforceBodyBudget()
+        unreadCount = unread.incrementAndFetch()
+    }
+
+    /** Walks newest to oldest; once the running total passes the budget, older bodies are dropped. */
+    private fun enforceBodyBudget() {
+        var total = 0L
+        for (i in requests.indices) {
+            val r = requests[i]
+            val size = (r.requestBody?.length ?: 0) + (r.responseBody?.length ?: 0)
+            if (size == 0) continue
+            total += size
+            if (total > BODY_BUDGET_CHARS) {
+                requests[i] = r.copy(requestBody = null, responseBody = null, bodiesEvicted = true)
+            }
+        }
     }
 
     fun addLog(level: com.waqas028.kmpinspector.domain.model.LogLevel, tag: String, message: String) {
@@ -134,7 +178,9 @@ internal object InspectorStore {
         unreadCrashes = 0
     }
 
+    @OptIn(ExperimentalAtomicApi::class)
     fun markRead() {
+        unread.store(0)
         unreadCount = 0
     }
 

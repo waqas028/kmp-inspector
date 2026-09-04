@@ -24,6 +24,8 @@ data class NetworkRequest(
     val responseBody: String? = null,
     val contentType: String? = null,
     val errorText: String? = null,
+    /** True once the store released this entry's bodies to stay inside its memory budget. */
+    val bodiesEvicted: Boolean = false,
 ) {
     val outcome: HttpOutcome
         get() = when (statusCode) {
