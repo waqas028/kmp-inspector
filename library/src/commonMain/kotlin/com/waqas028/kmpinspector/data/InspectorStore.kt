@@ -11,6 +11,9 @@ import com.waqas028.kmpinspector.domain.model.NetworkRequest
 import com.waqas028.kmpinspector.domain.model.WorkJob
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
 
 /**
  * The capture buffers. Sizes come from the handoff: 200 requests, a 2,000-line log ring.
@@ -44,8 +47,12 @@ internal object InspectorStore {
 
     val sessionStartMillis: Long = InspectorPlatform.currentTimeMillis()
 
-    private var nextId = 1L
-    private fun nextId(): Long = nextId++
+    // Ids are handed out from OkHttp threads, the logcat thread and the UI at once.
+    @OptIn(ExperimentalAtomicApi::class)
+    private val nextId = AtomicLong(0L)
+
+    @OptIn(ExperimentalAtomicApi::class)
+    private fun nextId(): Long = nextId.incrementAndFetch()
 
     fun addRequest(request: NetworkRequest) {
         requests.add(0, request)
@@ -54,17 +61,38 @@ internal object InspectorStore {
     }
 
     fun addLog(level: com.waqas028.kmpinspector.domain.model.LogLevel, tag: String, message: String) {
-        logs.add(
-            LogLine(
-                id = nextId(),
-                level = level,
-                tag = tag,
-                message = message,
-                timestampMillis = InspectorPlatform.currentTimeMillis(),
-            ),
+        addLogs(listOf(LogEntry(level, tag, message)))
+    }
+
+    /** A line waiting to enter the ring; the timestamp is when it was captured, not when flushed. */
+    class LogEntry(
+        val level: com.waqas028.kmpinspector.domain.model.LogLevel,
+        val tag: String,
+        val message: String,
+        val timestampMillis: Long = InspectorPlatform.currentTimeMillis(),
+    )
+
+    /**
+     * One snapshot write for a whole batch. High-volume feeds (logcat) must use this: a write per
+     * line means a global-snapshot apply, a recomposition check and, once the ring is full, an
+     * O(n) removal for every single line, which is enough to make the host app stutter.
+     */
+    fun addLogs(entries: List<LogEntry>) {
+        if (entries.isEmpty()) return
+        logs.addAll(
+            entries.map {
+                LogLine(
+                    id = nextId(),
+                    level = it.level,
+                    tag = it.tag,
+                    message = it.message,
+                    timestampMillis = it.timestampMillis,
+                )
+            },
         )
-        // Ring buffer: oldest lines fall off the front, newest stay at the tail for tailing.
-        while (logs.size > LOG_CAPACITY) logs.removeAt(0)
+        // Ring buffer: oldest lines fall off the front in one removal, not one per line.
+        val excess = logs.size - LOG_CAPACITY
+        if (excess > 0) logs.removeRange(0, excess)
     }
 
     fun addCrash(record: CrashRecord) {

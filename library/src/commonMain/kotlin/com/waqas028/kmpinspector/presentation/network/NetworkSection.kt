@@ -16,11 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -149,6 +152,7 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
                                 onClick = {
                                     state.selectedRequestId = request.id
                                     state.curlVisible = false
+                                    state.collapsedJsonPaths = emptySet()
                                 },
                             )
                             Hairline(color = DebugPalette.lineFaint)
@@ -288,7 +292,89 @@ private fun DurationBar(millis: Long, modifier: Modifier = Modifier) {
 @Composable
 private fun NetworkDetail(request: NetworkRequest, state: InspectorState, pane: PaneWidth) {
     val clipboard = LocalClipboardManager.current
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+    val tab = state.requestDetailTab
+    val body = when (tab) {
+        RequestDetailTab.Request -> request.requestBody
+        RequestDetailTab.Response -> request.responseBody
+        RequestDetailTab.Headers -> null
+    }
+    val bytes = if (tab == RequestDetailTab.Request) request.requestBytes else request.responseBytes
+
+    // Parsing a body can take tens of milliseconds for a large response; it happens once per
+    // request and tab, never per recomposition. The flattened rows are keyed on the collapsed set
+    // so toggling one branch rebuilds the row list but not the tree.
+    val node = remember(request.id, tab) { body?.takeIf { it.isNotBlank() }?.let(::parseJsonOrNull) }
+    val collapsed = state.collapsedJsonPaths
+    val rows = remember(node, collapsed) { node?.let { flattenJson(it, collapsed) } ?: emptyList() }
+    val curl = remember(request.id) { curlFor(request) }
+
+    // A lazy list, not a scrolling column: a large JSON body has thousands of rows and composing
+    // them all at once is what made opening a request feel slow.
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
+        item("summary") { DetailSummary(request) }
+
+        item("tabs") {
+            Row(
+                modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RequestDetailTab.entries.forEach { t ->
+                    val selected = tab == t
+                    Box(
+                        Modifier
+                            .height(48.dp)
+                            .clickable { state.requestDetailTab = t }
+                            .padding(end = 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                t.label,
+                                style = InspectorType.mono(
+                                    12.5.sp,
+                                    color = if (selected) DebugPalette.accent else DebugPalette.textDim,
+                                ),
+                            )
+                            Box(
+                                Modifier.padding(top = 6.dp).height(2.dp)
+                                    .width(if (selected) 40.dp else 0.dp)
+                                    .background(DebugPalette.accent),
+                            )
+                        }
+                    }
+                }
+                Box(Modifier.weight(1f))
+                CopyAsCurl(curl, pane) {
+                    clipboard.setText(AnnotatedString(it))
+                    state.curlVisible = true
+                }
+            }
+        }
+
+        when (tab) {
+            RequestDetailTab.Headers -> headerItems(request)
+            else -> bodyItems(body, request.contentType, bytes, node, rows, state)
+        }
+
+        // Reveal the exact command, so the developer can see what went to the clipboard.
+        if (state.curlVisible) {
+            item("curl") {
+                Box(
+                    Modifier.padding(top = 12.dp).fillMaxWidth()
+                        .background(DebugPalette.surface, RoundedCornerShape(4.dp))
+                        .border(1.dp, DebugPalette.line, RoundedCornerShape(4.dp))
+                        .padding(12.dp),
+                ) {
+                    Text(curl, style = InspectorType.mono(11.sp, color = DebugPalette.textDim, lineHeight = 18.sp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailSummary(request: NetworkRequest) {
+    Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 request.method,
@@ -335,70 +421,11 @@ private fun NetworkDetail(request: NetworkRequest, state: InspectorState, pane: 
                 Text(request.errorText, style = InspectorType.mono(11.5.sp, color = DebugPalette.bad))
             }
         }
-
-        // Copy as cURL is peer to the tabs, not buried in a menu.
-        Row(
-            modifier = Modifier.padding(top = 12.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RequestDetailTab.entries.forEach { tab ->
-                val selected = state.requestDetailTab == tab
-                Box(
-                    Modifier
-                        .height(48.dp)
-                        .clickable { state.requestDetailTab = tab }
-                        .padding(end = 16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            tab.label,
-                            style = InspectorType.mono(
-                                12.5.sp,
-                                color = if (selected) DebugPalette.accent else DebugPalette.textDim,
-                            ),
-                        )
-                        Box(
-                            Modifier.padding(top = 6.dp).height(2.dp)
-                                .width(if (selected) 40.dp else 0.dp)
-                                .background(DebugPalette.accent),
-                        )
-                    }
-                }
-            }
-            Box(Modifier.weight(1f))
-            CopyAsCurl(request, pane) {
-                clipboard.setText(AnnotatedString(it))
-                state.curlVisible = true
-            }
-        }
-
-        when (state.requestDetailTab) {
-            RequestDetailTab.Request -> BodyPane(request.requestBody, request.contentType, request.requestBytes, state)
-            RequestDetailTab.Response -> BodyPane(request.responseBody, request.contentType, request.responseBytes, state)
-            RequestDetailTab.Headers -> HeadersPane(request)
-        }
-
-        // Reveal the exact command, so the developer can see what went to the clipboard.
-        if (state.curlVisible) {
-            Box(
-                Modifier.padding(top = 12.dp).fillMaxWidth()
-                    .background(DebugPalette.surface, RoundedCornerShape(4.dp))
-                    .border(1.dp, DebugPalette.line, RoundedCornerShape(4.dp))
-                    .padding(12.dp),
-            ) {
-                Text(
-                    curlFor(request),
-                    style = InspectorType.mono(11.sp, color = DebugPalette.textDim, lineHeight = 18.sp),
-                )
-            }
-        }
     }
 }
 
 @Composable
-private fun CopyAsCurl(request: NetworkRequest, pane: PaneWidth, onCopy: (String) -> Unit) {
-    val command = curlFor(request)
+private fun CopyAsCurl(command: String, pane: PaneWidth, onCopy: (String) -> Unit) {
     if (pane == PaneWidth.Compact) {
         HitTarget(onClick = { onCopy(command) }) {
             InspectorIcon(Glyph.ContentCopy, "Copy as cURL", size = 18.dp, tint = DebugPalette.accent)
@@ -427,32 +454,42 @@ private fun curlFor(request: NetworkRequest): String = buildString {
     request.requestBody?.let { append(" \\\n  --data '").append(it).append("'") }
 }
 
-@Composable
-private fun BodyPane(body: String?, contentType: String?, bytes: Long, state: InspectorState) {
+/** Plain text bodies are shown up to this many characters; one enormous Text node lays out slowly. */
+private const val RAW_BODY_LIMIT = 64 * 1024
+
+private fun LazyListScope.bodyItems(
+    body: String?,
+    contentType: String?,
+    bytes: Long,
+    node: JsonNode?,
+    rows: List<JsonRow>,
+    state: InspectorState,
+) {
     if (body.isNullOrBlank()) {
-        Text(
-            "No body",
-            modifier = Modifier.padding(top = 16.dp),
-            style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
-        )
+        item("no-body") {
+            Text(
+                "No body",
+                modifier = Modifier.padding(top = 16.dp),
+                style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
+            )
+        }
         return
     }
-    val node = parseJsonOrNull(body)
-    Column(Modifier.padding(top = 12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+
+    item("body-meta") {
+        Row(modifier = Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "${contentType ?: "text/plain"} · ${formatBytes(bytes)}",
                 modifier = Modifier.weight(1f),
                 style = InspectorType.mono(10.5.sp, color = DebugPalette.textFaint, tabular = true),
             )
             if (node != null) {
-                HitTarget(onClick = { state.collapsedJsonPaths.clear() }) {
+                HitTarget(onClick = { state.collapsedJsonPaths = emptySet() }) {
                     Text("expand all", style = InspectorType.mono(11.sp, color = DebugPalette.accent))
                 }
                 HitTarget(
                     onClick = {
-                        state.collapsedJsonPaths.clear()
-                        collectBranchPaths(node, "$", state.collapsedJsonPaths)
+                        state.collapsedJsonPaths = buildSet { collectBranchPaths(node, "$", this) }
                     },
                     modifier = Modifier.padding(start = 12.dp),
                 ) {
@@ -460,21 +497,66 @@ private fun BodyPane(body: String?, contentType: String?, bytes: Long, state: In
                 }
             }
         }
-        Box(
-            Modifier.padding(top = 8.dp).fillMaxWidth()
-                .background(DebugPalette.surface, RoundedCornerShape(4.dp))
-                .padding(10.dp),
-        ) {
-            if (node == null) {
-                Text(body, style = InspectorType.code)
-            } else {
-                Column { JsonTree(node, "$", 0, null, state) }
+    }
+
+    if (node == null) {
+        item("raw") {
+            val shown = if (body.length > RAW_BODY_LIMIT) body.substring(0, RAW_BODY_LIMIT) else body
+            Column(
+                Modifier.padding(top = 8.dp).fillMaxWidth()
+                    .background(DebugPalette.surface, RoundedCornerShape(4.dp))
+                    .padding(10.dp),
+            ) {
+                Text(shown, style = InspectorType.code)
+                if (shown.length < body.length) {
+                    Text(
+                        "… showing the first ${formatBytes(RAW_BODY_LIMIT.toLong())} of ${formatBytes(body.length.toLong())}",
+                        modifier = Modifier.padding(top = 8.dp),
+                        style = InspectorType.mono(10.5.sp, color = DebugPalette.textFaint),
+                    )
+                }
             }
+        }
+        return
+    }
+
+    itemsIndexed(rows, key = { _, row -> row.key }) { index, row ->
+        val shape = when {
+            rows.size == 1 -> RoundedCornerShape(4.dp)
+            index == 0 -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+            index == rows.lastIndex -> RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp)
+            else -> RoundedCornerShape(0.dp)
+        }
+        Box(
+            Modifier
+                .then(if (index == 0) Modifier.padding(top = 8.dp) else Modifier)
+                .fillMaxWidth()
+                .background(DebugPalette.surface, shape)
+                .padding(horizontal = 10.dp),
+        ) {
+            JsonRowView(row, state)
         }
     }
 }
 
-private fun collectBranchPaths(node: JsonNode, path: String, out: MutableList<String>) {
+private fun LazyListScope.headerItems(request: NetworkRequest) {
+    if (request.requestHeaders.isNotEmpty()) {
+        item("req-kicker") { Kicker("Request", Modifier.padding(top = 12.dp, bottom = 4.dp)) }
+        itemsIndexed(request.requestHeaders, key = { i, h -> "req-$i-${h.name}" }) { _, h ->
+            KeyValueRow(h.name, h.value)
+            Hairline(color = DebugPalette.lineFaint)
+        }
+    }
+    if (request.responseHeaders.isNotEmpty()) {
+        item("res-kicker") { Kicker("Response", Modifier.padding(top = 16.dp, bottom = 4.dp)) }
+        itemsIndexed(request.responseHeaders, key = { i, h -> "res-$i-${h.name}" }) { _, h ->
+            KeyValueRow(h.name, h.value)
+            Hairline(color = DebugPalette.lineFaint)
+        }
+    }
+}
+
+private fun collectBranchPaths(node: JsonNode, path: String, out: MutableSet<String>) {
     when (node) {
         is JsonNode.Obj -> {
             out += path
@@ -488,75 +570,84 @@ private fun collectBranchPaths(node: JsonNode, path: String, out: MutableList<St
     }
 }
 
+/** One visible line of the JSON tree, pre-flattened so the lazy list can address it by index. */
+private sealed class JsonRow(val path: String, val depth: Int, val key: String) {
+    class Branch(path: String, depth: Int, val label: String?, val node: JsonNode, val collapsed: Boolean) :
+        JsonRow(path, depth, "b:$path")
+    class Leaf(path: String, depth: Int, val label: String?, val node: JsonNode) : JsonRow(path, depth, "l:$path")
+    class Close(path: String, depth: Int, val isObj: Boolean) : JsonRow(path, depth, "c:$path")
+}
+
+private fun flattenJson(root: JsonNode, collapsed: Set<String>): List<JsonRow> {
+    val out = ArrayList<JsonRow>()
+    fun walk(node: JsonNode, path: String, depth: Int, label: String?) {
+        if (node.isBranch()) {
+            val isCollapsed = path in collapsed
+            out += JsonRow.Branch(path, depth, label, node, isCollapsed)
+            if (isCollapsed) return
+            when (node) {
+                is JsonNode.Obj -> node.entries.forEach { (k, v) -> walk(v, "$path.$k", depth + 1, k) }
+                is JsonNode.Arr -> node.items.forEachIndexed { i, v -> walk(v, "$path[$i]", depth + 1, null) }
+                else -> Unit
+            }
+            out += JsonRow.Close(path, depth, node is JsonNode.Obj)
+        } else {
+            out += JsonRow.Leaf(path, depth, label, node)
+        }
+    }
+    walk(root, "$", 0, null)
+    return out
+}
+
 /**
  * Rows: 36dp for a collapsible branch (whole row is the target), 24dp for a leaf, 14dp indent per
  * level. Long values wrap; nothing scrolls sideways.
  */
 @Composable
-private fun JsonTree(
-    node: JsonNode,
-    path: String,
-    depth: Int,
-    label: String?,
-    state: InspectorState,
-) {
-    val indent = (depth * 14).dp
-    val collapsed = path in state.collapsedJsonPaths
-
-    if (node.isBranch()) {
-        Row(
+private fun JsonRowView(row: JsonRow, state: InspectorState) {
+    val indent = (row.depth * 14).dp
+    when (row) {
+        is JsonRow.Branch -> Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(36.dp)
                 .clickable {
-                    if (collapsed) state.collapsedJsonPaths.remove(path)
-                    else state.collapsedJsonPaths.add(path)
+                    state.collapsedJsonPaths =
+                        if (row.collapsed) state.collapsedJsonPaths - row.path
+                        else state.collapsedJsonPaths + row.path
                 }
                 .padding(start = indent),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                if (collapsed) "▸" else "▾",
+                if (row.collapsed) "▸" else "▾",
                 modifier = Modifier.width(14.dp),
                 style = InspectorType.mono(10.sp, color = DebugPalette.textFaint),
             )
-            if (label != null) {
-                Text(
-                    "$label: ",
-                    style = InspectorType.mono(12.sp, color = DebugPalette.accent),
-                )
+            if (row.label != null) {
+                Text("${row.label}: ", style = InspectorType.mono(12.sp, color = DebugPalette.accent))
             }
             Text(
-                if (collapsed) node.collapsedLabel() else if (node is JsonNode.Obj) "{" else "[",
+                if (row.collapsed) row.node.collapsedLabel() else if (row.node is JsonNode.Obj) "{" else "[",
                 style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
             )
         }
-        if (!collapsed) {
-            when (node) {
-                is JsonNode.Obj -> node.entries.forEach { (k, v) ->
-                    JsonTree(v, "$path.$k", depth + 1, k, state)
-                }
-                is JsonNode.Arr -> node.items.forEachIndexed { i, v ->
-                    JsonTree(v, "$path[$i]", depth + 1, null, state)
-                }
-                else -> Unit
-            }
-            Row(Modifier.fillMaxWidth().height(24.dp).padding(start = indent)) {
-                Text(
-                    if (node is JsonNode.Obj) "}" else "]",
-                    modifier = Modifier.padding(start = 14.dp),
-                    style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
-                )
-            }
+
+        is JsonRow.Close -> Row(Modifier.fillMaxWidth().height(24.dp).padding(start = indent)) {
+            Text(
+                if (row.isObj) "}" else "]",
+                modifier = Modifier.padding(start = 14.dp),
+                style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
+            )
         }
-    } else {
-        Row(
+
+        is JsonRow.Leaf -> Row(
             modifier = Modifier.fillMaxWidth().padding(start = indent + 14.dp, top = 3.dp, bottom = 3.dp),
         ) {
-            if (label != null) {
-                Text("$label: ", style = InspectorType.mono(12.sp, color = DebugPalette.accent))
+            if (row.label != null) {
+                Text("${row.label}: ", style = InspectorType.mono(12.sp, color = DebugPalette.accent))
             }
-            when (node) {
+            when (val node = row.node) {
                 is JsonNode.Str -> Text(
                     "\"${node.value}\"",
                     style = InspectorType.mono(12.sp, color = DebugPalette.ok, lineHeight = 20.sp),
@@ -569,26 +660,6 @@ private fun JsonTree(
                         .copy(fontStyle = FontStyle.Italic),
                 )
                 else -> Unit
-            }
-        }
-    }
-}
-
-@Composable
-private fun HeadersPane(request: NetworkRequest) {
-    Column(Modifier.padding(top = 12.dp)) {
-        if (request.requestHeaders.isNotEmpty()) {
-            Kicker("Request", Modifier.padding(bottom = 4.dp))
-            request.requestHeaders.forEach {
-                KeyValueRow(it.name, it.value)
-                Hairline(color = DebugPalette.lineFaint)
-            }
-        }
-        if (request.responseHeaders.isNotEmpty()) {
-            Kicker("Response", Modifier.padding(top = 16.dp, bottom = 4.dp))
-            request.responseHeaders.forEach {
-                KeyValueRow(it.name, it.value)
-                Hairline(color = DebugPalette.lineFaint)
             }
         }
     }

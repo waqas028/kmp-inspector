@@ -19,7 +19,7 @@ internal enum class InspectorTab(val label: String) {
 
 internal enum class NetworkFilter(val label: String) { All("All"), Errors("Errors"), Slow("Slow"), Writes("Writes") }
 internal enum class CrashFilter(val label: String) { All("All"), Fatal("Fatal"), NonFatal("Non-fatal") }
-internal enum class RequestDetailTab(val label: String) { Request("Request"), Response("Response"), Headers("Headers") }
+internal enum class RequestDetailTab(val label: String) { Headers("Headers"), Request("Request"), Response("Response") }
 
 /**
  * Every list defaults to newest first: the thing you just did is the thing you are looking for.
@@ -75,7 +75,8 @@ internal class InspectorState {
     var networkSort by mutableStateOf(SortOrder.NewestFirst)
     var selectedRequestId by mutableStateOf<Long?>(null)
     var requestDetailTab by mutableStateOf(RequestDetailTab.Response)
-    val collapsedJsonPaths = mutableStateListOf<String>()
+    /** A set, not a list: the tree checks membership once per node, and bodies have thousands. */
+    var collapsedJsonPaths by mutableStateOf<Set<String>>(emptySet())
     var curlVisible by mutableStateOf(false)
 
     var selectedTable by mutableStateOf<String?>(null)
