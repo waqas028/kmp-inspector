@@ -24,7 +24,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.waqas028.kmpinspector.data.InspectorShare
 import com.waqas028.kmpinspector.data.InspectorStore
 import com.waqas028.kmpinspector.data.JsonNode
 import com.waqas028.kmpinspector.data.collapsedLabel
@@ -348,6 +354,10 @@ private fun NetworkDetail(request: NetworkRequest, state: InspectorState, pane: 
                     clipboard.setText(AnnotatedString(it))
                     state.curlVisible = true
                 }
+                // Hidden where the platform has no share sheet, rather than shown and inert.
+                if (InspectorShare.available) {
+                    ShareRequest(request, tab, curl, pane)
+                }
             }
         }
 
@@ -445,6 +455,94 @@ private fun CopyAsCurl(command: String, pane: PaneWidth, onCopy: (String) -> Uni
                 )
             }
         }
+    }
+}
+
+/**
+ * Share as cURL (re-runnable), Text (the whole exchange, readable in a chat) or Body (just the
+ * payload of the tab you are on). The menu opens from one control so the tab row stays short.
+ */
+@Composable
+private fun ShareRequest(request: NetworkRequest, tab: RequestDetailTab, curl: String, pane: PaneWidth) {
+    var open by remember { mutableStateOf(false) }
+    val subject = "${request.method} ${request.pathAndQuery}"
+    Box(Modifier.padding(start = if (pane == PaneWidth.Compact) 0.dp else 8.dp)) {
+        if (pane == PaneWidth.Compact) {
+            HitTarget(onClick = { open = true }) {
+                InspectorIcon(Glyph.Share, "Share", size = 18.dp, tint = DebugPalette.accent)
+            }
+        } else {
+            HitTarget(onClick = { open = true }) {
+                Box(
+                    Modifier
+                        .height(36.dp)
+                        .border(1.dp, DebugPalette.accent, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("Share", style = InspectorType.mono(12.sp, FontWeight.Medium, DebugPalette.accent))
+                }
+            }
+        }
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            modifier = Modifier.background(DebugPalette.surfaceRaised),
+        ) {
+            ShareItem("cURL") { open = false; InspectorShare.share(curl, subject) }
+            ShareItem("Text") { open = false; InspectorShare.share(shareableText(request), subject) }
+            ShareItem("Body") {
+                open = false
+                // The tab you are looking at decides which body goes out.
+                val body = when (tab) {
+                    RequestDetailTab.Request -> request.requestBody ?: request.responseBody
+                    else -> request.responseBody ?: request.requestBody
+                }
+                InspectorShare.share(body?.takeIf { it.isNotBlank() } ?: "No body", subject)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShareItem(label: String, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(label, style = InspectorType.mono(12.sp, color = DebugPalette.text)) },
+        onClick = onClick,
+    )
+}
+
+/** The whole exchange as plain text, in the order the tabs show it: headers, request, response. */
+internal fun shareableText(request: NetworkRequest): String = buildString {
+    append(request.method).append(' ').append(request.url).append('\n')
+    append(request.statusCode?.toString() ?: "ERR")
+    if (request.reasonPhrase.isNotEmpty()) append(' ').append(request.reasonPhrase)
+    append(" · ").append(formatDuration(request.durationMillis))
+    append(" · ").append(request.protocol)
+    append(" · ").append(formatClock(request.timestampMillis)).append('\n')
+    append("↑ ").append(formatBytes(request.requestBytes))
+    append("  ↓ ").append(formatBytes(request.responseBytes)).append('\n')
+    request.errorText?.let { append("Error: ").append(it).append('\n') }
+
+    fun section(title: String, body: () -> Unit) {
+        append('\n').append("── ").append(title).append('\n')
+        body()
+    }
+    if (request.requestHeaders.isNotEmpty()) {
+        section("Request headers") {
+            request.requestHeaders.forEach { append(it.name).append(": ").append(it.value).append('\n') }
+        }
+    }
+    request.requestBody?.takeIf { it.isNotBlank() }?.let { body ->
+        section("Request body") { append(body).append('\n') }
+    }
+    if (request.responseHeaders.isNotEmpty()) {
+        section("Response headers") {
+            request.responseHeaders.forEach { append(it.name).append(": ").append(it.value).append('\n') }
+        }
+    }
+    request.responseBody?.takeIf { it.isNotBlank() }?.let { body ->
+        section("Response body") { append(body).append('\n') }
     }
 }
 
