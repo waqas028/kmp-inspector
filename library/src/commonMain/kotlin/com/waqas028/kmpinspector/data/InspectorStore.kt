@@ -31,7 +31,8 @@ internal object InspectorStore {
      * 256 KB each way could pin 100 MB; past this budget the oldest entries keep their metadata
      * and lose their bodies.
      */
-    const val BODY_BUDGET_CHARS = 16 * 1024 * 1024
+    var bodyBudgetChars: Int = 16 * 1024 * 1024
+        internal set
 
     /**
      * Header names whose values are masked in anything that leaves the device through Share.
@@ -98,7 +99,7 @@ internal object InspectorStore {
             val size = (r.requestBody?.length ?: 0) + (r.responseBody?.length ?: 0)
             if (size == 0) continue
             total += size
-            if (total > BODY_BUDGET_CHARS) {
+            if (total > bodyBudgetChars) {
                 requests[i] = r.copy(requestBody = null, responseBody = null, bodiesEvicted = true)
             }
         }
@@ -184,6 +185,13 @@ internal object InspectorStore {
         unreadCount = 0
     }
 
+    fun clearRequests() {
+        requests.clear()
+        markRead()
+    }
+
+    fun clearLogs() = logs.clear()
+
     /**
      * Fatal crashes not yet looked at. The spec shows the tab dot "when unread crashes exist", so
      * the crash state is unread-scoped rather than permanent — otherwise one crash would pin the
@@ -198,7 +206,7 @@ internal object InspectorStore {
         requests.clear(); logs.clear(); crashes.clear(); work.clear(); tables.clear()
         database = null
         databaseController = null
-        unreadCount = 0
+        markRead()
         unreadCrashes = 0
         runCatching { CrashFile.clear() }
     }

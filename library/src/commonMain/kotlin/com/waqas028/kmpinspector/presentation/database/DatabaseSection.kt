@@ -43,7 +43,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.waqas028.kmpinspector.data.InspectorShare
 import com.waqas028.kmpinspector.data.InspectorStore
+import com.waqas028.kmpinspector.data.tableToCsv
+import com.waqas028.kmpinspector.presentation.common.ActionPill
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.TimeSource
 import com.waqas028.kmpinspector.data.formatBytes
 import com.waqas028.kmpinspector.domain.model.DbTable
@@ -328,6 +335,13 @@ private fun DatabaseDetail(table: DbTable?, state: InspectorState) {
         }
         Hairline()
         StatusLine(text = (result ?: table)?.let { "${it.rowCount} rows" } ?: "") {
+            val shown = result ?: table
+            if (shown != null && InspectorShare.available) {
+                ActionPill("CSV", onClick = {
+                    InspectorShare.share(tableToCsv(shown), subject = "${shown.name}.csv")
+                })
+                Spacer(Modifier.width(8.dp))
+            }
             SortToggle(state.rowSort, onToggle = { state.rowSort = state.rowSort.flip() })
             Spacer(Modifier.width(8.dp))
             RefreshButton()
@@ -625,7 +639,8 @@ private fun SqlEditor(state: InspectorState) {
             modifier = Modifier.padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SheetButton("Run") { runQuery(state) }
+            val scope = rememberCoroutineScope()
+            SheetButton("Run") { scope.launch { runQuery(state) } }
             // On error the previous result stays on screen.
             Text(
                 state.sqlError ?: state.sqlStatus ?: "Read-only. SELECT and WITH only.",
@@ -644,14 +659,16 @@ private fun SqlEditor(state: InspectorState) {
 private val FROM_TABLE = Regex("""\bfrom\s+"?([A-Za-z_][A-Za-z0-9_]*)"?""", RegexOption.IGNORE_CASE)
 
 /**
- * The inspector holds tables handed to it, not a live database, so there is no SQL engine here.
- * Run resolves the FROM clause against the registered tables and renders that table's rows in the
- * same grid. Anything that is not a SELECT or WITH is rejected before it gets that far.
+ * With a live database the statement runs there, off the main thread, and the result renders in
+ * the grid. Without one the inspector has only the tables handed to it, so Run resolves the FROM
+ * clause against them and shows that table's rows. Anything that is not a SELECT or WITH is
+ * rejected before it gets that far, on either path.
  */
-internal fun runQuery(state: InspectorState) {
+internal suspend fun runQuery(state: InspectorState) {
     val started = TimeSource.Monotonic.markNow()
     val sql = state.sqlText.trim()
     fun elapsedMs() = started.elapsedNow().inWholeMilliseconds
+    val controller = InspectorStore.databaseController
     when {
         sql.isEmpty() -> {
             state.sqlError = "Enter a query."
@@ -663,19 +680,38 @@ internal fun runQuery(state: InspectorState) {
             state.sqlStatus = null
         }
 
-        else -> {
-            val name = FROM_TABLE.find(sql)?.groupValues?.get(1)
-            val table = InspectorStore.tables.firstOrNull { it.name.equals(name, ignoreCase = true) }
-            if (table == null) {
-                // On error the previous result stays on screen.
-                state.sqlError = if (name == null) "Could not find a FROM clause." else "no such table: $name"
-                state.sqlStatus = null
-            } else {
-                state.sqlResult = table
-                state.sqlError = null
-                state.sqlStatus = "ok · ${table.rowCount} rows · ${elapsedMs()} ms"
+        controller != null -> {
+            val outcome = withContext(Dispatchers.Default) { runCatching { controller.query(sql) } }
+            val live = outcome.getOrNull()
+            when {
+                outcome.isFailure -> {
+                    state.sqlError = outcome.exceptionOrNull()?.message?.lineSequence()?.firstOrNull() ?: "Query failed"
+                    state.sqlStatus = null
+                }
+                live != null -> {
+                    state.sqlResult = live
+                    state.sqlError = null
+                    state.sqlStatus = "ok · ${live.rowCount} rows · ${elapsedMs()} ms"
+                }
+                else -> resolveFromSnapshot(state, sql, elapsedMs())
             }
         }
+
+        else -> resolveFromSnapshot(state, sql, elapsedMs())
+    }
+}
+
+private fun resolveFromSnapshot(state: InspectorState, sql: String, elapsedMs: Long) {
+    val name = FROM_TABLE.find(sql)?.groupValues?.get(1)
+    val table = InspectorStore.tables.firstOrNull { it.name.equals(name, ignoreCase = true) }
+    if (table == null) {
+        // On error the previous result stays on screen.
+        state.sqlError = if (name == null) "Could not find a FROM clause." else "no such table: $name"
+        state.sqlStatus = null
+    } else {
+        state.sqlResult = table
+        state.sqlError = null
+        state.sqlStatus = "ok · ${table.rowCount} rows · $elapsedMs ms"
     }
 }
 

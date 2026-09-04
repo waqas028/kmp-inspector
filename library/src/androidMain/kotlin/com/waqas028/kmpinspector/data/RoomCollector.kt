@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -87,6 +88,40 @@ internal object RoomCollector {
                     InspectorLog.i("Inspector", "$table.$column updated for rowid $rowId")
                     snapshot()
                 }.onFailure { report("update $table.$column", it) }
+            }
+        }
+
+        override fun query(sql: String): DbTable {
+            val support = runCatching { database.openHelper.readableDatabase }.getOrNull()
+            if (support != null) {
+                return support.query(sql).use { c ->
+                    val columns = c.columnNames.map { DbColumn(it, "") }
+                    val rows = buildList {
+                        while (size < ROW_LIMIT && c.moveToNext()) {
+                            add(
+                                (0 until c.columnCount).map { i ->
+                                    when (c.getType(i)) {
+                                        Cursor.FIELD_TYPE_NULL -> DbValue.Null
+                                        Cursor.FIELD_TYPE_INTEGER, Cursor.FIELD_TYPE_FLOAT -> DbValue.Number(c.getString(i))
+                                        Cursor.FIELD_TYPE_BLOB -> DbValue.Blob(c.getBlob(i).size.toLong())
+                                        else -> DbValue.Text(c.getString(i))
+                                    }
+                                },
+                            )
+                        }
+                    }
+                    DbTable(name = "query", columns = columns, rows = rows)
+                }
+            }
+            // Called from a worker thread already, so blocking here costs nothing on the UI.
+            return runBlocking {
+                database.useReaderConnection { connection ->
+                    connection.usePrepared(sql) { stmt ->
+                        val columns = (0 until stmt.getColumnCount()).map { DbColumn(stmt.getColumnName(it), "") }
+                        val rows = buildList { while (size < ROW_LIMIT && stmt.step()) add(stmt.readRow(from = 0)) }
+                        DbTable(name = "query", columns = columns, rows = rows)
+                    }
+                }
             }
         }
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,6 +60,7 @@ import com.waqas028.kmpinspector.presentation.PaneWidth
 import com.waqas028.kmpinspector.presentation.RequestDetailTab
 import com.waqas028.kmpinspector.presentation.SortOrder
 import com.waqas028.kmpinspector.presentation.flip
+import com.waqas028.kmpinspector.presentation.common.ActionPill
 import com.waqas028.kmpinspector.presentation.common.EmptyState
 import com.waqas028.kmpinspector.presentation.common.FilterPill
 import com.waqas028.kmpinspector.presentation.common.Hairline
@@ -174,6 +176,11 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
                 StatusLine(
                     text = "${filtered.size} of ${all.size} requests · capture buffer ${InspectorStore.NETWORK_CAPACITY}",
                 ) {
+                    ActionPill("Clear", onClick = {
+                        InspectorStore.clearRequests()
+                        state.selectedRequestId = null
+                    })
+                    Spacer(Modifier.width(8.dp))
                     SortToggle(state.networkSort, onToggle = { state.networkSort = state.networkSort.flip() })
                 }
             }
@@ -551,7 +558,7 @@ internal fun shareableText(request: NetworkRequest, redact: Boolean = false): St
     }
 }
 
-private fun curlFor(request: NetworkRequest, redact: Boolean = false): String = buildString {
+internal fun curlFor(request: NetworkRequest, redact: Boolean = false): String = buildString {
     append("curl -X ").append(request.method).append(" '").append(request.url).append("'")
     request.requestHeaders.forEach { append(" \\\n  -H '").append(it.name).append(": ").append(it.displayValue(redact)).append("'") }
     request.requestBody?.let { append(" \\\n  --data '").append(it).append("'") }
@@ -572,7 +579,7 @@ private fun LazyListScope.bodyItems(
     if (body.isNullOrBlank()) {
         item("no-body") {
             Text(
-                if (evicted) "Body released to stay inside the ${formatBytes(InspectorStore.BODY_BUDGET_CHARS.toLong())} memory budget; newer requests keep theirs."
+                if (evicted) "Body released to stay inside the ${formatBytes(InspectorStore.bodyBudgetChars.toLong())} memory budget; newer requests keep theirs."
                 else "No body",
                 modifier = Modifier.padding(top = 16.dp),
                 style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
@@ -676,14 +683,14 @@ private fun collectBranchPaths(node: JsonNode, path: String, out: MutableSet<Str
 }
 
 /** One visible line of the JSON tree, pre-flattened so the lazy list can address it by index. */
-private sealed class JsonRow(val path: String, val depth: Int, val key: String) {
+internal sealed class JsonRow(val path: String, val depth: Int, val key: String) {
     class Branch(path: String, depth: Int, val label: String?, val node: JsonNode, val collapsed: Boolean) :
         JsonRow(path, depth, "b:$path")
     class Leaf(path: String, depth: Int, val label: String?, val node: JsonNode) : JsonRow(path, depth, "l:$path")
     class Close(path: String, depth: Int, val isObj: Boolean) : JsonRow(path, depth, "c:$path")
 }
 
-private fun flattenJson(root: JsonNode, collapsed: Set<String>): List<JsonRow> {
+internal fun flattenJson(root: JsonNode, collapsed: Set<String>): List<JsonRow> {
     val out = ArrayList<JsonRow>()
     fun walk(node: JsonNode, path: String, depth: Int, label: String?) {
         if (node.isBranch()) {

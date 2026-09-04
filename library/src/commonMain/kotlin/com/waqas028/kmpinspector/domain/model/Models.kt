@@ -127,6 +127,14 @@ interface DatabaseController {
      * other string is bound as text, which SQLite converts by the column's affinity.
      */
     fun updateCell(table: String, rowId: Long, column: String, value: String?)
+
+    /**
+     * Runs a read-only statement against the live database and returns the result as a table, or
+     * null when the host does not support queries, in which case the panel falls back to showing
+     * the snapshot of the table named in the FROM clause. Called off the main thread; may throw,
+     * and the message is shown in the editor.
+     */
+    fun query(sql: String): DbTable? = null
 }
 
 data class DbInfo(val fileName: String, val engine: String, val sizeLabel: String)

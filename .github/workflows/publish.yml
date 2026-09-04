@@ -83,7 +83,7 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY_CONTENTS }}
       
         run: |
-          ./gradlew :library:publishAndReleaseToMavenCentral :library-noop:publishAndReleaseToMavenCentral \
+          ./gradlew :library:publishAndReleaseToMavenCentral :library-noop:publishAndReleaseToMavenCentral :library-ktor:publishAndReleaseToMavenCentral :library-room:publishAndReleaseToMavenCentral \
             -PlibraryVersion="$VERSION" \
             --no-configuration-cache \
             --stacktrace

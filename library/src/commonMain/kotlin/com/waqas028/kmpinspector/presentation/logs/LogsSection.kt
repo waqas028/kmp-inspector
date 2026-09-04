@@ -34,6 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.waqas028.kmpinspector.data.InspectorPlatform
+import com.waqas028.kmpinspector.data.InspectorShare
+import com.waqas028.kmpinspector.data.logsToText
+import com.waqas028.kmpinspector.presentation.common.ActionPill
+import androidx.compose.foundation.layout.Spacer
 import com.waqas028.kmpinspector.data.InspectorStore
 import com.waqas028.kmpinspector.data.formatClock
 import com.waqas028.kmpinspector.domain.model.LogLevel
@@ -198,6 +202,14 @@ internal fun LogsSection(state: InspectorState) {
                 append(if (state.tailing) " · live" else " · paused at ${state.pausedAt ?: "—"}")
             },
         ) {
+            if (InspectorShare.available) {
+                ActionPill("Share", onClick = {
+                    InspectorShare.share(logsToText(filtered), subject = "${InspectorStore.appId} logs")
+                })
+                Spacer(Modifier.width(8.dp))
+            }
+            ActionPill("Clear", onClick = { InspectorStore.clearLogs() })
+            Spacer(Modifier.width(8.dp))
             SortToggle(state.logSort, onToggle = { state.logSort = state.logSort.flip() })
         }
     }

@@ -1,7 +1,6 @@
 package com.waqas028.kmpinspector.data
 
 import android.os.Process
-import com.waqas028.kmpinspector.domain.model.LogLevel
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.concurrent.LinkedBlockingQueue
@@ -27,9 +26,6 @@ internal object LogcatCollector {
 
     private val queue = LinkedBlockingQueue<InspectorStore.LogEntry>()
 
-    // brief format: "D/Tag     (12345): message"
-    private val line = Regex("""^([VDIWEF])/(.*?)\s*\(\s*\d+\):\s?(.*)$""")
-
     fun start() {
         if (started) return
         started = true
@@ -47,9 +43,8 @@ internal object LogcatCollector {
         BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
             while (true) {
                 val text = reader.readLine() ?: break
-                val match = line.find(text) ?: continue
-                val (level, tag, message) = match.destructured
-                queue.offer(InspectorStore.LogEntry(level.toLevel(), tag, message))
+                val parsed = parseLogcatLine(text) ?: continue
+                queue.offer(InspectorStore.LogEntry(parsed.level, parsed.tag, parsed.message))
             }
         }
     }
@@ -65,13 +60,5 @@ internal object LogcatCollector {
             runCatching { InspectorStore.addLogs(batch.toList()) }
             batch.clear()
         }
-    }
-
-    private fun String.toLevel(): LogLevel = when (this) {
-        "V" -> LogLevel.Verbose
-        "D" -> LogLevel.Debug
-        "I" -> LogLevel.Info
-        "W" -> LogLevel.Warn
-        else -> LogLevel.Error
     }
 }

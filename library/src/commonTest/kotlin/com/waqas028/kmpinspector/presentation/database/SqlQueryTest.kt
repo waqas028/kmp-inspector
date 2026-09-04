@@ -6,6 +6,7 @@ import com.waqas028.kmpinspector.domain.model.DbInfo
 import com.waqas028.kmpinspector.domain.model.DbTable
 import com.waqas028.kmpinspector.domain.model.DbValue
 import com.waqas028.kmpinspector.presentation.InspectorState
+import kotlinx.coroutines.runBlocking
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,7 +33,7 @@ class SqlQueryTest {
         val state = InspectorState()
         state.sqlText = "SELECT * FROM order_items WHERE qty > 1"
 
-        runQuery(state)
+        runBlocking { runQuery(state) }
 
         assertEquals(orderItems, state.sqlResult)
         // Status carries a timing suffix, so assert the part that is deterministic.
@@ -45,7 +46,7 @@ class SqlQueryTest {
         val state = InspectorState()
         state.sqlText = "DELETE FROM order_items"
 
-        runQuery(state)
+        runBlocking { runQuery(state) }
 
         assertNull(state.sqlResult)
         assertEquals("Read-only. SELECT and WITH only.", state.sqlError)
@@ -55,10 +56,10 @@ class SqlQueryTest {
     fun an_unknown_table_reports_the_error_and_keeps_the_previous_result() {
         val state = InspectorState()
         state.sqlText = "SELECT * FROM order_items"
-        runQuery(state)
+        runBlocking { runQuery(state) }
 
         state.sqlText = "SELECT * FROM nope"
-        runQuery(state)
+        runBlocking { runQuery(state) }
 
         // The spec is explicit: on error the previous result stays on screen.
         assertNotNull(state.sqlResult)
@@ -102,7 +103,7 @@ class SqlQueryTest {
         state.selectedTable = "order_items"
         state.sqlText = "SELECT * FROM order_items"
 
-        runQuery(state)
+        runBlocking { runQuery(state) }
 
         // The result takes over the grid, but the table context is not lost.
         assertEquals("order_items", state.selectedTable)
@@ -114,7 +115,7 @@ class SqlQueryTest {
         val state = InspectorState()
         state.sqlText = "   "
 
-        runQuery(state)
+        runBlocking { runQuery(state) }
 
         assertEquals("Enter a query.", state.sqlError)
     }

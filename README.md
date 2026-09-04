@@ -57,6 +57,13 @@ debugImplementation(libs.kmp.inspector)
 releaseImplementation(libs.kmp.inspector.noop)
 ```
 
+Two optional companions live at the same version. `kmp-inspector-ktor` records Ktor client calls on every platform, and `kmp-inspector-room` shows a Room database on desktop and iOS as well as Android:
+
+```kotlin
+implementation("io.github.waqas028:kmp-inspector-ktor:1.0.0-beta03")
+implementation("io.github.waqas028:kmp-inspector-room:1.0.0-beta03")
+```
+
 A Compose Multiplatform shared module has no debug/release split of its own, so add the real artifact there with `implementation` and rely on `KmpInspector(enabled = ...)` and `install(enabled = ...)` to switch it off; both are no-ops when disabled, and the artifact ships the R8 rules it needs.
 
 Make sure `mavenCentral()` is in your repositories (in `settings.gradle.kts`):
@@ -111,6 +118,10 @@ KmpInspector.attach(database, fileName = "app.db")
 `install` takes a few options: `enabled` (defaults to the manifest's debuggable flag), `appPackagePrefix` for highlighting your stack frames, `captureLogcat`, `captureWorkManager`, and `excludeActivity` for screens that should not get the bubble, such as a splash. `appPackagePrefix` defaults to the application id; if your flavors use an `applicationIdSuffix`, pass your source package (for example `"com.example.shop"`) so the highlighted frames are really yours. Do not also wrap Compose content in `KmpInspector { }` on Android when using `install`, or you will see two bubbles.
 
 OkHttp, Room and WorkManager are `compileOnly` dependencies of the library. You only need them on your classpath if you use that collector.
+
+### Panel actions
+
+Every list has a sort toggle on its status line and a floating "Top" pill once you scroll. Network and Logs have **Clear**. Logs has **Share**, which sends the currently filtered lines as text. A table in Database has **CSV**, which shares the visible rows. The SQL editor runs real `SELECT` and `WITH` statements when a live database is attached, and falls back to showing the snapshot of the table named in the `FROM` clause otherwise.
 
 ### Sharing safely
 
@@ -229,7 +240,21 @@ fun main() = application {
 
 ## Feeding it data
 
-On Android, `install` plus the OkHttp interceptor and `attach` cover the common sources. Everything else, and every source on iOS and desktop, goes through the `Inspector` and `InspectorLog` entry points. Call `Inspector.configure(...)` once at startup, then record data wherever it happens in your app.
+On Android, `install` plus the OkHttp interceptor and `attach` cover the common sources. On every platform, the two companion artifacts cover Ktor and Room:
+
+```kotlin
+// Network, any platform: com.waqas028.kmpinspector.ktor
+HttpClient {
+    install(KmpInspectorPlugin)
+}
+
+// Database, any platform: com.waqas028.kmpinspector.room
+RoomInspector.attach(database, fileName = "app.db")
+```
+
+The Ktor plugin records method, URL, status, timing, headers and text bodies, and keeps binary responses untouched apart from their size. `RoomInspector.attach` reads tables now and on every open or Refresh, writes cell edits back, and runs the SQL editor's queries against the live database. On Android it is the same collector as `KmpInspector.attach`.
+
+Everything else goes through the `Inspector` and `InspectorLog` entry points. Call `Inspector.configure(...)` once at startup, then record data wherever it happens in your app.
 
 ```kotlin
 import com.waqas028.kmpinspector.Inspector

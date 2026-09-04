@@ -88,6 +88,14 @@ object Inspector {
 
     fun recordCrash(record: CrashRecord) = InspectorStore.addCrash(record)
 
+    /** The captured requests, newest first. A copy: safe to hold and iterate on any thread. */
+    fun requests(): List<NetworkRequest> = InspectorStore.requests.toList()
+
+    /** Drops captured requests and the unread badge. Logs, crashes, work and database stay. */
+    fun clearRequests() = InspectorStore.clearRequests()
+
+    fun clearLogs() = InspectorStore.clearLogs()
+
     /**
      * Replaces the Background Work list. Android-only in the UI; a no-op tab elsewhere.
      *

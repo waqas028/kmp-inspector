@@ -135,6 +135,26 @@ internal fun StatusLine(text: String, trailing: @Composable () -> Unit = {}) {
     }
 }
 
+/** A quiet bordered pill for one-off actions on a status line: Clear, Share, CSV. */
+@Composable
+internal fun ActionPill(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, accent: Boolean = false) {
+    HitTarget(onClick = onClick, modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .height(32.dp)
+                .border(1.dp, if (accent) DebugPalette.accent else DebugPalette.lineStrong, RoundedCornerShape(16.dp))
+                .padding(horizontal = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                label,
+                style = InspectorType.mono(11.5.sp, FontWeight.Medium, if (accent) DebugPalette.accent else DebugPalette.textDim),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
 /**
  * The sort control. A word plus an arrow, not an icon alone: "↓ Newest" says both what the order is
  * and which way it goes, where a bare swap-vert icon says neither.
