@@ -111,6 +111,20 @@ internal class InspectorState {
     var selectedWorkId by mutableStateOf<String?>(null)
     var workSort by mutableStateOf(SortOrder.NewestFirst)
 
+    /**
+     * System back at phone width: step out of whatever is open on top first, one layer per press,
+     * and report whether anything was consumed. The caller closes the inspector when nothing was.
+     */
+    fun handleBack(): Boolean = when {
+        editingCell != null -> { editingCell = null; true }
+        sqlOpen -> { sqlOpen = false; true }
+        selectedRequestId != null -> { selectedRequestId = null; curlVisible = false; true }
+        selectedTable != null || sqlResult != null -> { selectedTable = null; sqlResult = null; true }
+        selectedCrashId != null -> { selectedCrashId = null; true }
+        selectedWorkId != null -> { selectedWorkId = null; true }
+        else -> false
+    }
+
     /** Selection is per section and clears on tab change, along with the scoped query. */
     fun selectTab(next: InspectorTab) {
         if (next == tab) return

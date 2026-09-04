@@ -48,6 +48,7 @@ import com.waqas028.kmpinspector.presentation.listPaneWidth
 import com.waqas028.kmpinspector.presentation.logs.LogsSection
 import com.waqas028.kmpinspector.presentation.network.NetworkSection
 import com.waqas028.kmpinspector.presentation.paneWidthFor
+import com.waqas028.kmpinspector.presentation.InspectorBackHandler
 import com.waqas028.kmpinspector.presentation.theme.DebugPalette
 import com.waqas028.kmpinspector.presentation.theme.Glyph
 import com.waqas028.kmpinspector.presentation.theme.InspectorIcon
@@ -81,6 +82,12 @@ internal fun InspectorShell(state: InspectorState, onClose: () -> Unit) = Inspec
     Surface(color = DebugPalette.bg, modifier = Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val pane = paneWidthFor(maxWidth)
+            // System back closes the inspector. At phone width the detail replaces the list, so
+            // back first returns to the list, the way the in-app arrow does; wider panes show both
+            // at once and go straight to closing.
+            InspectorBackHandler(enabled = true) {
+                if (pane != PaneWidth.Compact || !state.handleBack()) onClose()
+            }
 
             Column(
                 Modifier

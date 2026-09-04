@@ -58,6 +58,7 @@ kotlin {
 
         androidMain.dependencies {
             implementation(libs.kotlinx.coroutines.android)
+            implementation(libs.androidx.activity.compose) // BackHandler
             implementation(libs.androidx.lifecycle.runtime)
             compileOnly(libs.okhttp)
             compileOnly(libs.room.runtime)
