@@ -1,4 +1,4 @@
-# KmpInspector
+# KmpInspector (Beta)
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.waqas028/kmp-inspector.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.waqas028/kmp-inspector)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
@@ -332,7 +332,38 @@ Found a bug, or something not working as described? Please [open an issue](https
 
 ## Contributing
 
-Contributions are welcome — anyone can help. Fork the repository, make your change, and open a pull request against [`waqas028/kmp-inspector`](https://github.com/waqas028/kmp-inspector). For anything larger, opening an issue first to discuss the approach is appreciated.
+Contributions are welcome! Please follow these steps:
+
+- Fork the repository.
+- Create a new branch (git checkout -b feature-branch).
+- Commit your changes (git commit -m 'Add some feature').
+- Push to the branch (git push origin feature-branch).
+- Open a pull request.
+
+## 👤 Developed By
+
+<table>
+<tr>
+<td width="130" valign="top">
+<a href="https://x.com/waqas028?s=08" target="_blank">
+  <img src="https://github.com/user-attachments/assets/99199ad1-a69d-4ceb-8599-e495a1ed937b" width="110" style="border-radius:12px;">
+</a>
+</td>
+<td valign="middle">
+
+**Muhammad Waqas**  
+
+[![Email](https://img.shields.io/badge/Email-waqaswaseem679@gmail.com-D14836?style=flat&logo=gmail&logoColor=white)](mailto:waqaswaseem679@gmail.com)  
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Profile-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/muhammad-waqas-4399361a3)  
+[![GitHub](https://img.shields.io/badge/GitHub-waqas028-181717?style=flat&logo=github&logoColor=white)](https://github.com/waqas028)  
+[![Twitter](https://img.shields.io/badge/Twitter-@waqas028-000000?style=flat&logo=x&logoColor=white)](https://x.com/waqas028?s=08)  
+[![Skype](https://img.shields.io/badge/Skype-live%3Awaqasyaqeen420-00AFF0?style=flat&logo=skype&logoColor=white)](https://join.skype.com/invite/p4ckdyAOrsCs)  
+[![WhatsApp](https://img.shields.io/badge/WhatsApp-Chat-25D366?style=flat&logo=whatsapp&logoColor=white)](https://wa.me/+923045593294)  
+[![Google Developer](https://img.shields.io/badge/Google%20Developer-Profile-4285F4?style=flat&logo=google&logoColor=white)](https://g.dev/MuhammadWaqasDev)  
+
+</td>
+</tr>
+</table>
 
 ## License
 
