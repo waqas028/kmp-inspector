@@ -6,6 +6,8 @@
     <application
         android:name=".SampleApplication"
         android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:label="KmpInspector Sample"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">

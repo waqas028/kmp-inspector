@@ -96,6 +96,9 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "KmpInspectorSample"
             packageVersion = "1.0.0"
+            macOS { iconFile.set(project.file("../icons/app-icon.icns")) }
+            windows { iconFile.set(project.file("../icons/app-icon.ico")) }
+            linux { iconFile.set(project.file("../icons/app-icon.png")) }
         }
     }
 }
