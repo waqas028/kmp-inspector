@@ -28,6 +28,13 @@ KmpInspector is a floating bubble you wrap your UI with once. Tapping it opens a
 
 > **Requirement:** KmpInspector renders on a Compose surface. On Android it injects that surface itself, so XML, Fragment and mixed apps work with no Compose code of your own. On iOS and desktop the UI you wrap must be Compose Multiplatform.
 
+## Demo
+
+# Desktop
+https://github.com/user-attachments/assets/2402e153-4ebc-4777-b207-e82a02f13939
+
+
+
 ## Installation
 
 Use the real artifact in debug builds and the `no-op` twin in release. The no-op has the same classes and signatures with empty bodies, so every call site compiles and your release APK carries no inspector code, fonts or collectors. Use the latest version from the badge above.
