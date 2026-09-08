@@ -30,6 +30,10 @@ KmpInspector is a floating bubble you wrap your UI with once. Tapping it opens a
 
 ## Demo
 
+# IOS
+
+https://github.com/user-attachments/assets/5f1a4c32-9a42-46b5-93bd-c2992d7e235d
+
 # Desktop
 https://github.com/user-attachments/assets/2402e153-4ebc-4777-b207-e82a02f13939
 
