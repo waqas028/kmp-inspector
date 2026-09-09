@@ -1,4 +1,4 @@
-# KmpInspector (Beta)
+# KmpInspector lib (Beta)
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.waqas028/kmp-inspector.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.waqas028/kmp-inspector)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
