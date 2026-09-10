@@ -315,19 +315,51 @@ The handler delegates to whatever was installed before it, so an existing crash 
 
 ## Keeping it out of release builds
 
-The `debugImplementation` / `releaseImplementation` split from [Installation](#installation) is the complete answer on Android: release builds link the no-op artifact and contain nothing from the inspector.
+The inspector can read your database and run `SELECT` against it, so it should not ship enabled. There are two separate questions here, and they have different answers: whether the inspector *runs*, and whether its code is *in the binary at all*.
 
-Where that split is not available, such as a shared Compose Multiplatform module, pass your own flag instead. Both entry points are no-ops when disabled:
+### Stopping it running: one switch, every platform
 
 ```kotlin
-KmpInspector(enabled = isDebugBuild) {
-    MyAppContent()
-}
-
-KmpInspector.install(this, enabled = BuildConfig.DEBUG)   // Android Application
+Inspector.enabled = isDebugBuild   // once, at startup, before anything else
 ```
 
-With `enabled = false` the composable renders your content directly and `install` returns before touching anything, so nothing from the inspector enters the composition or the process.
+With this off, every entry point returns immediately. Nothing is captured, no crash handler is installed, `attach` reads no tables and keeps no handle to your database, the Ktor plugin does not buffer response bodies, and the `KmpInspector { }` composable renders your content directly. `KmpInspector.install(application, enabled = false)` sets the same switch on Android.
+
+This is a runtime guarantee, not a packaging one. The classes are still in the binary.
+
+### Removing the code: depends on the target
+
+| Target | Does unused code get removed? | What to do |
+|---|---|---|
+| Android | Yes, R8 | Use the `debugImplementation` / `releaseImplementation` split from [Installation](#installation). Release builds link the no-op and contain nothing from the inspector. |
+| iOS | Yes, Kotlin/Native dead-code elimination — **unless** the framework exports the library | Do not `export(...)` the inspector from your framework, and do not switch on `transitiveExport`. Exporting keeps its whole public API alive by definition. Then swap in the no-op for release builds as well. |
+| Desktop (JVM) | No | Nothing is stripped, ever. The only way to keep the code out is to depend on the no-op artifact in the distribution you ship. |
+
+So on iOS and desktop the `enabled` flag alone does **not** remove anything, and on iOS the export setting matters more than the flag does.
+
+### Swapping the artifact in a shared module
+
+A Kotlin Multiplatform module has no `debugImplementation`, but the choice can still be made at build time. Xcode passes its build configuration in the `CONFIGURATION` environment variable, and a Gradle property covers desktop:
+
+```kotlin
+// shared/build.gradle.kts
+val inspectorEnabled = System.getenv("CONFIGURATION") != "Release" &&
+    providers.gradleProperty("inspectorEnabled").getOrElse("true").toBoolean()
+
+sourceSets {
+    commonMain.dependencies {
+        if (inspectorEnabled) {
+            implementation("io.github.waqas028:kmp-inspector:1.0.0-beta03")
+        } else {
+            implementation("io.github.waqas028:kmp-inspector-no-op:1.0.0-beta03")
+        }
+    }
+}
+```
+
+Release archives from Xcode then link the no-op, and a desktop release passes `-PinspectorEnabled=false`.
+
+One catch: `kmp-inspector-ktor` and `kmp-inspector-room` depend on the real library, so they have no no-op twin and must sit behind the same condition. Guard those two dependencies with the same flag and keep their call sites in a source set that is only compiled when the inspector is on.
 
 ## Sample app
 

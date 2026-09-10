@@ -45,6 +45,9 @@ val KmpInspectorPlugin = createClientPlugin("KmpInspector", ::KmpInspectorPlugin
     val ids = AtomicLong(getTimeMillis())
 
     on(Send) { request ->
+        // Off means off: no timing, and above all no save(), which would buffer every response
+        // body in memory for a panel that can never show it.
+        if (!Inspector.enabled) return@on proceed(request)
         val startedAt = getTimeMillis()
         val requestBody = request.body as? OutgoingContent
         val call = try {

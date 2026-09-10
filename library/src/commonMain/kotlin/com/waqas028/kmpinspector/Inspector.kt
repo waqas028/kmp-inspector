@@ -18,6 +18,24 @@ import com.waqas028.kmpinspector.domain.model.WorkJob
 object Inspector {
 
     /**
+     * The master switch, on by default. Set it to false at startup and every entry point here goes
+     * quiet: nothing is captured, no crash handler is installed, and [setDatabase] keeps no handle
+     * to your database.
+     *
+     * This is what a Compose Multiplatform app should use, because only Android can swap in the
+     * no-op artifact per build type. It does not remove the code from an iOS or desktop binary —
+     * for that, depend on `kmp-inspector-no-op` in release builds — but it does stop the inspector
+     * doing any work or holding any of your data.
+     *
+     * ```
+     * Inspector.enabled = isDebugBuild
+     * ```
+     */
+    var enabled: Boolean
+        get() = InspectorStore.enabled
+        set(value) { InspectorStore.enabled = value }
+
+    /**
      * Identifies the session in the inspector header, e.g. `com.example.shop · debug`. Call once at
      * startup; without it the header reads `unknown`.
      */
@@ -40,6 +58,7 @@ object Inspector {
      * Objective-C/Swift exceptions and hard signals (SIGSEGV, SIGABRT) never reach it.
      */
     fun installCrashHandler(appPackagePrefix: String? = null) {
+        if (!enabled) return
         installPlatformCrashHandler(appPackagePrefix)
     }
 
@@ -106,6 +125,7 @@ object Inspector {
      * discover the scheduler's version itself.
      */
     fun setWork(jobs: List<WorkJob>, engineLabel: String? = null) {
+        if (!enabled) return
         InspectorStore.work.clear()
         InspectorStore.work.addAll(jobs)
         InspectorStore.workLabel = engineLabel
@@ -117,6 +137,9 @@ object Inspector {
      * panel edits the snapshot in memory only.
      */
     fun setDatabase(info: DbInfo, tables: List<DbTable>, controller: DatabaseController? = null) {
+        // Guarded because a controller is a live handle to the host's database. Holding one in a
+        // build where the inspector is off is exactly the exposure this switch exists to prevent.
+        if (!enabled) return
         InspectorStore.database = info
         InspectorStore.databaseController = controller
         InspectorStore.databaseRefreshing = false

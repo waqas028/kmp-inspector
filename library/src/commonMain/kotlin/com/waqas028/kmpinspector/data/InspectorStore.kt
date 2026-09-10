@@ -12,6 +12,7 @@ import com.waqas028.kmpinspector.domain.model.WorkJob
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.geometry.Offset
+import kotlin.concurrent.Volatile
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -45,6 +46,17 @@ internal object InspectorStore {
      * composition, so the overlay on the next Activity, or after a rotation, picks up where the
      * last one left off instead of resetting.
      */
+    /**
+     * The master switch. False makes every capture entry point below return immediately, so a host
+     * that turns the inspector off stops paying for it even where the code is still linked into
+     * the binary — which is the normal case off Android, where nothing strips it.
+     *
+     * Volatile because it is written once at startup and read from HTTP client threads, the
+     * logcat reader and the UI.
+     */
+    @Volatile
+    var enabled: Boolean = true
+
     var inspectorOpen by mutableStateOf(false)
     var bubblePosition by mutableStateOf<Offset?>(null)
     var bubbleOnRight by mutableStateOf(true)
@@ -85,6 +97,7 @@ internal object InspectorStore {
 
     @OptIn(ExperimentalAtomicApi::class)
     fun addRequest(request: NetworkRequest) {
+        if (!enabled) return
         requests.add(0, request)
         trim(requests, NETWORK_CAPACITY)
         enforceBodyBudget()
@@ -123,7 +136,7 @@ internal object InspectorStore {
      * O(n) removal for every single line, which is enough to make the host app stutter.
      */
     fun addLogs(entries: List<LogEntry>) {
-        if (entries.isEmpty()) return
+        if (!enabled || entries.isEmpty()) return
         logs.addAll(
             entries.map {
                 LogLine(
@@ -141,6 +154,7 @@ internal object InspectorStore {
     }
 
     fun addCrash(record: CrashRecord) {
+        if (!enabled) return
         crashes.add(0, record)
         unreadCount++
         if (record.fatal) unreadCrashes++

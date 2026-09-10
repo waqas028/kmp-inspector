@@ -30,7 +30,7 @@ import com.waqas028.kmpinspector.presentation.shell.InspectorShell
  */
 @Composable
 fun KmpInspector(
-    enabled: Boolean = true,
+    enabled: Boolean = Inspector.enabled,
     content: @Composable () -> Unit,
 ) {
     if (!enabled) {

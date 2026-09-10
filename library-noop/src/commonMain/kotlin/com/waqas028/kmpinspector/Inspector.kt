@@ -11,6 +11,8 @@ import com.waqas028.kmpinspector.domain.model.WorkJob
 /** No-op twin of the real [Inspector]: every call is accepted and discarded. */
 @Suppress("UNUSED_PARAMETER")
 object Inspector {
+    /** Settable so host code compiles unchanged; nothing reads it here. */
+    var enabled: Boolean = false
     fun configure(appId: String, variant: String = "debug") = Unit
     fun installCrashHandler(appPackagePrefix: String? = null) = Unit
     fun clearCrashes() = Unit

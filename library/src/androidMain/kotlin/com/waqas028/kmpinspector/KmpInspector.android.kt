@@ -53,7 +53,12 @@ object KmpInspector {
         /** Return true for Activities that should not get the bubble, e.g. a splash screen. */
         excludeActivity: (Activity) -> Boolean = { false },
     ) {
-        if (!enabled || installed) return
+        if (!enabled) {
+            // Records the decision globally, so a later attach() or interceptor stays quiet too.
+            Inspector.enabled = false
+            return
+        }
+        if (installed) return
         installed = true
 
         initializeInspector(application)
@@ -75,6 +80,9 @@ object KmpInspector {
      * [fileName] is only used for the header label; Room's KMP builder does not expose it.
      */
     fun attach(database: RoomDatabase, fileName: String? = null) {
+        // Reading every table is real work on real data, so it is skipped outright when the
+        // inspector is off rather than done and then discarded.
+        if (!Inspector.enabled) return
         RoomCollector.attach(database, fileName)
     }
 
