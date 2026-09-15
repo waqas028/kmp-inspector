@@ -1,4 +1,9 @@
-# KmpInspector lib (Beta)
+<h1>
+  KmpInspector lib (Beta)
+  <a href="https://buymeacoffee.com/waqas028" style="float:right">
+    <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=waqas028&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="40" align="right" />
+  </a>
+</h1>
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.waqas028/kmp-inspector.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.waqas028/kmp-inspector)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
