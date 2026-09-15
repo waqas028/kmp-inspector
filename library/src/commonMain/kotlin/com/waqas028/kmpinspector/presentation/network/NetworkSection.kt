@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,7 +37,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -77,7 +83,6 @@ import com.waqas028.kmpinspector.presentation.common.ScrollToTop
 import com.waqas028.kmpinspector.presentation.common.SortToggle
 import com.waqas028.kmpinspector.presentation.common.StatusLine
 import com.waqas028.kmpinspector.presentation.common.StatusMark
-import com.waqas028.kmpinspector.presentation.pathBudget
 import com.waqas028.kmpinspector.presentation.shell.MasterDetail
 import com.waqas028.kmpinspector.presentation.theme.DebugPalette
 import com.waqas028.kmpinspector.presentation.theme.Glyph
@@ -101,10 +106,13 @@ internal fun HttpOutcome.glyph(): String = when (this) {
 }
 
 /**
- * Head-truncate: the tail is the part that differs between requests, so the ellipsis goes in front.
+ * Line breaks inside a URL only ever happen at whitespace, and a path has none — so a long
+ * endpoint would break mid-word. Zero-width spaces after the separators give the layout somewhere
+ * sensible to wrap, without changing what the text says or how wide it measures.
  */
-internal fun String.headTruncate(budget: Int): String =
-    if (length <= budget) this else "…" + takeLast(budget)
+private fun String.breakableAtSeparators(): String =
+    if (length <= 28) this
+    else replace("/", "/\u200B").replace("?", "?\u200B").replace("&", "&\u200B")
 
 @Composable
 internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
@@ -135,6 +143,13 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
     val selected = filtered.firstOrNull { it.id == state.selectedRequestId }
         ?: all.firstOrNull { it.id == state.selectedRequestId }
 
+    // Most apps talk to one host, and repeating it on every row is what pushed the endpoint off
+    // the screen in the first place. Whichever host is most common is left unsaid; anything else
+    // is named, so a call to a second backend is never mistaken for the usual one.
+    val usualHost = remember(all.size, all.firstOrNull()?.id) {
+        all.groupingBy { it.host }.eachCount().maxByOrNull { it.value }?.key
+    }
+
     MasterDetail(
         pane = pane,
         hasSelection = selected != null,
@@ -161,7 +176,7 @@ internal fun NetworkSection(state: InspectorState, pane: PaneWidth) {
                         items(filtered, key = { it.id }) { request ->
                             NetworkRow(
                                 request = request,
-                                budget = pane.pathBudget,
+                                showHost = request.host != usualHost,
                                 selected = request.id == state.selectedRequestId,
                                 onClick = {
                                     state.selectedRequestId = request.id
@@ -220,30 +235,48 @@ private fun NetworkFilterChips(state: InspectorState, all: List<NetworkRequest>)
 }
 
 /**
- * Two lines, six facts. One line cannot hold method, path, status, duration, size and time at 380dp
- * without truncating all of them: line one identifies the call, line two measures it.
+ * Three lines, six facts. One line cannot hold method, path, status, duration, size and time at
+ * 380dp without truncating all of them — which is what used to happen to the path. So the endpoint
+ * gets a line of its own at full width, with the badges and the clock above it and the timings
+ * below.
  */
 @Composable
 private fun NetworkRow(
     request: NetworkRequest,
-    budget: Int,
+    showHost: Boolean,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    // The endpoint gets a line to itself and the full width. Sharing line one with the badges
+    // left it about twenty characters, which is why it used to arrive truncated to a stub.
+    val endpoint = remember(request.url, showHost) {
+        buildAnnotatedString {
+            if (showHost) {
+                withStyle(SpanStyle(color = DebugPalette.textFaint)) {
+                    append(request.host.breakableAtSeparators())
+                }
+            }
+            append(request.pathAndQuery.breakableAtSeparators())
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .heightIn(min = 72.dp)
             .background(if (selected) DebugPalette.selectionFill else Color.Transparent)
+            // Painted rather than laid out: the row's height now depends on how far the endpoint
+            // wraps, so a sibling asking to fill that height has nothing to measure against.
+            .drawBehind {
+                if (selected) drawRect(DebugPalette.accent, size = Size(2.dp.toPx(), size.height))
+            }
             .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 2dp accent bar on the leading edge marks selection alongside the tint.
-        Box(
-            Modifier.width(2.dp).fillMaxHeight()
-                .background(if (selected) DebugPalette.accent else Color.Transparent),
-        )
-        Column(Modifier.padding(start = 14.dp, end = 16.dp).fillMaxWidth()) {
+        Column(
+            Modifier
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
+                .fillMaxWidth(),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusMark(request.outcome.glyph(), request.outcome.tone())
                 Text(
@@ -260,13 +293,24 @@ private fun NetworkRow(
                         11.sp, FontWeight.Medium, DebugPalette.textDim, tracking = 0.04.em,
                     ),
                 )
+                // The clock moves up here, into space line one was wasting anyway.
+                Box(Modifier.weight(1f))
                 Text(
-                    text = request.pathAndQuery.headTruncate(budget),
-                    modifier = Modifier.padding(start = 8.dp),
-                    style = InspectorType.mono(12.5.sp, color = DebugPalette.text),
+                    formatClock(request.timestampMillis),
+                    style = InspectorType.meta,
                     maxLines = 1,
                 )
             }
+
+            Text(
+                text = endpoint,
+                modifier = Modifier.padding(top = 6.dp).fillMaxWidth(),
+                style = InspectorType.mono(12.5.sp, color = DebugPalette.text, lineHeight = 18.sp),
+                // Three lines is past any real endpoint; the detail pane has the whole URL anyway.
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+
             Row(
                 modifier = Modifier.padding(top = 6.dp).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -279,13 +323,9 @@ private fun NetworkRow(
                 DurationBar(request.durationMillis, Modifier.weight(1f).padding(end = 10.dp))
                 Text(
                     if (request.statusCode == null) "—" else formatBytes(request.responseBytes),
+                    // Fixed, so every row's duration bar gets the same track and their lengths
+                    // stay comparable down the list.
                     modifier = Modifier.width(52.dp),
-                    style = InspectorType.meta,
-                    maxLines = 1,
-                )
-                Text(
-                    formatClock(request.timestampMillis),
-                    modifier = Modifier.width(88.dp),
                     style = InspectorType.meta,
                     maxLines = 1,
                 )

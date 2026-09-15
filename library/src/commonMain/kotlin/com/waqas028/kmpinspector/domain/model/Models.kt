@@ -36,9 +36,25 @@ data class NetworkRequest(
             else -> HttpOutcome.ServerError
         }
 
-    /** The part shown in the list: path plus query, head-truncated by the UI. */
+    /**
+     * The part shown in the list: everything from the host onwards, in full.
+     *
+     * Walked rather than split on the first '/': `substringAfter('/')` returns the whole string
+     * when there is no slash, so a host-only URL used to render as its own path.
+     */
     val pathAndQuery: String
-        get() = url.substringAfter("://").substringAfter('/').let { if (it.isEmpty()) "/" else "/$it" }
+        get() {
+            val afterHost = url.substringAfter("://").dropWhile { it != '/' && it != '?' }
+            return when {
+                afterHost.isEmpty() -> "/"
+                afterHost.startsWith('?') -> "/$afterHost"
+                else -> afterHost
+            }
+        }
+
+    /** Host alone, so the list can name it on the rare request that does not use the usual one. */
+    val host: String
+        get() = url.substringAfter("://").takeWhile { it != '/' && it != '?' }
 
     val isWrite: Boolean get() = method.uppercase() in setOf("POST", "PUT", "PATCH", "DELETE")
 }

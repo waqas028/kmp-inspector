@@ -55,14 +55,6 @@ internal val PaneWidth.listPaneWidth: Dp
         PaneWidth.Expanded -> 420.dp
     }
 
-/** How many characters of a path fit before head-truncation. */
-internal val PaneWidth.pathBudget: Int
-    get() = when (this) {
-        PaneWidth.Compact -> 26
-        PaneWidth.Medium -> 30
-        PaneWidth.Expanded -> 48
-    }
-
 @Stable
 internal class InspectorState {
     var tab by mutableStateOf(InspectorTab.Network)
