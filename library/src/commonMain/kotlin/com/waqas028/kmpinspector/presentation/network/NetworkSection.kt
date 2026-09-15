@@ -29,6 +29,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
@@ -43,13 +44,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.waqas028.kmpinspector.data.InspectorShare
+import kotlinx.coroutines.delay
 import com.waqas028.kmpinspector.data.InspectorStore
 import com.waqas028.kmpinspector.data.JsonNode
+import com.waqas028.kmpinspector.data.branchBody
 import com.waqas028.kmpinspector.data.collapsedLabel
+import com.waqas028.kmpinspector.data.withEmbeddedJson
 import com.waqas028.kmpinspector.data.formatBytes
 import com.waqas028.kmpinspector.data.formatClock
 import com.waqas028.kmpinspector.data.formatDuration
 import com.waqas028.kmpinspector.data.isBranch
+import com.waqas028.kmpinspector.data.parseFormEncodedOrNull
 import com.waqas028.kmpinspector.data.parseJsonOrNull
 import com.waqas028.kmpinspector.domain.model.HttpHeader
 import com.waqas028.kmpinspector.domain.model.HttpOutcome
@@ -317,15 +322,38 @@ private fun NetworkDetail(request: NetworkRequest, state: InspectorState, pane: 
     // Parsing a body can take tens of milliseconds for a large response; it happens once per
     // request and tab, never per recomposition. The flattened rows are keyed on the collapsed set
     // so toggling one branch rebuilds the row list but not the tree.
-    val node = remember(request.id, tab) { body?.takeIf { it.isNotBlank() }?.let(::parseJsonOrNull) }
+    val node = remember(request.id, tab) {
+        body?.takeIf { it.isNotBlank() }?.let(::parseJsonOrNull)?.withEmbeddedJson()
+    }
+    // Only when it is not JSON: a form body and a JSON body are never the same text.
+    val form = remember(request.id, tab, node) {
+        if (node != null) null else body?.takeIf { it.isNotBlank() }?.let(::parseFormEncodedOrNull)
+    }
     val collapsed = state.collapsedJsonPaths
     val rows = remember(node, collapsed) { node?.let { flattenJson(it, collapsed) } ?: emptyList() }
+    // A form field often carries a whole JSON document as its value. Wrapping the pairs in an
+    // object lets the same flattener expand those, so both bodies behave identically.
+    val formRows = remember(form, collapsed) {
+        form?.let { pairs ->
+            flattenJson(
+                root = JsonNode.Obj(pairs.map { (k, v) -> k to JsonNode.Str(v).withEmbeddedJson() }),
+                collapsed = collapsed,
+                rootPath = "form",
+                includeRoot = false,
+            )
+        }
+    }
     val curl = remember(request.id) { curlFor(request) }
 
     // A lazy list, not a scrolling column: a large JSON body has thousands of rows and composing
     // them all at once is what made opening a request feel slow.
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
-        item("summary") { DetailSummary(request) }
+        item("summary") {
+            DetailSummary(request) {
+                clipboard.setText(AnnotatedString(curl))
+                state.curlVisible = true
+            }
+        }
 
         item("tabs") {
             Row(
@@ -358,10 +386,7 @@ private fun NetworkDetail(request: NetworkRequest, state: InspectorState, pane: 
                     }
                 }
                 Box(Modifier.weight(1f))
-                CopyAsCurl(curl, pane) {
-                    clipboard.setText(AnnotatedString(it))
-                    state.curlVisible = true
-                }
+                CopyTab(pane) { clipboard.setText(AnnotatedString(copyPayload(request, tab))) }
                 // Hidden where the platform has no share sheet, rather than shown and inert.
                 if (InspectorShare.available) {
                     ShareRequest(request, tab, curl, pane)
@@ -371,7 +396,7 @@ private fun NetworkDetail(request: NetworkRequest, state: InspectorState, pane: 
 
         when (tab) {
             RequestDetailTab.Headers -> headerItems(request)
-            else -> bodyItems(body, request.contentType, bytes, node, rows, state, request.bodiesEvicted)
+            else -> bodyItems(body, request.contentType, bytes, node, rows, form, formRows, state, request.bodiesEvicted)
         }
 
         // Reveal the exact command, so the developer can see what went to the clipboard.
@@ -391,7 +416,7 @@ private fun NetworkDetail(request: NetworkRequest, state: InspectorState, pane: 
 }
 
 @Composable
-private fun DetailSummary(request: NetworkRequest) {
+private fun DetailSummary(request: NetworkRequest, onCopyCurl: () -> Unit) {
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -429,6 +454,14 @@ private fun DetailSummary(request: NetworkRequest) {
             style = InspectorType.mono(11.sp, color = DebugPalette.textDim, tabular = true),
         )
 
+        // Peer to the summary, not to a tab: a cURL command describes the whole call.
+        HitTarget(onClick = onCopyCurl, minSize = 32.dp, modifier = Modifier.padding(top = 2.dp)) {
+            Text(
+                "copy as cURL",
+                style = InspectorType.mono(11.sp, FontWeight.Medium, DebugPalette.accent),
+            )
+        }
+
         if (request.errorText != null) {
             Box(
                 Modifier.padding(top = 12.dp).fillMaxWidth()
@@ -442,14 +475,35 @@ private fun DetailSummary(request: NetworkRequest) {
     }
 }
 
+/**
+ * Copies whatever the selected tab is showing: the headers, the request body or the response body.
+ * It used to copy a cURL command from every tab, which meant the button did the same thing three
+ * times and never what the tab in front of you said.
+ *
+ * Confirmation is the control itself changing for a moment, so nothing on this crowded row moves.
+ */
 @Composable
-private fun CopyAsCurl(command: String, pane: PaneWidth, onCopy: (String) -> Unit) {
+private fun CopyTab(pane: PaneWidth, onCopy: () -> Unit) {
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(1_400)
+            copied = false
+        }
+    }
+    val click = { onCopy(); copied = true }
+
     if (pane == PaneWidth.Compact) {
-        HitTarget(onClick = { onCopy(command) }) {
-            InspectorIcon(Glyph.ContentCopy, "Copy as cURL", size = 18.dp, tint = DebugPalette.accent)
+        HitTarget(onClick = click) {
+            InspectorIcon(
+                if (copied) Glyph.CheckCircle else Glyph.ContentCopy,
+                if (copied) "Copied" else "Copy this tab",
+                size = 18.dp,
+                tint = DebugPalette.accent,
+            )
         }
     } else {
-        HitTarget(onClick = { onCopy(command) }) {
+        HitTarget(onClick = click) {
             Box(
                 Modifier
                     .height(36.dp)
@@ -458,12 +512,39 @@ private fun CopyAsCurl(command: String, pane: PaneWidth, onCopy: (String) -> Uni
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    "Copy as cURL",
+                    if (copied) "Copied" else "Copy",
                     style = InspectorType.mono(12.sp, FontWeight.Medium, DebugPalette.accent),
                 )
             }
         }
     }
+}
+
+/** What the copy button puts on the clipboard: exactly what the tab in front of you shows. */
+internal fun copyPayload(request: NetworkRequest, tab: RequestDetailTab): String = when (tab) {
+    RequestDetailTab.Headers -> headersText(request)
+    RequestDetailTab.Request -> bodyPayload(request.requestBody)
+    RequestDetailTab.Response -> bodyPayload(request.responseBody)
+}
+
+private fun bodyPayload(body: String?): String {
+    val text = body?.takeIf { it.isNotBlank() } ?: return "No body"
+    // A form body is copied the way it is displayed, one decoded pair per line.
+    return parseFormEncodedOrNull(text)?.joinToString("\n") { (k, v) -> "$k: $v" } ?: text
+}
+
+/** The headers alone, in the order the tab lists them. Verbatim: the clipboard never redacts. */
+internal fun headersText(request: NetworkRequest): String = buildString {
+    if (request.requestHeaders.isNotEmpty()) {
+        append("── Request headers\n")
+        request.requestHeaders.forEach { append(it.name).append(": ").append(it.value).append('\n') }
+    }
+    if (request.responseHeaders.isNotEmpty()) {
+        if (isNotEmpty()) append('\n')
+        append("── Response headers\n")
+        request.responseHeaders.forEach { append(it.name).append(": ").append(it.value).append('\n') }
+    }
+    if (isEmpty()) append("No headers")
 }
 
 /**
@@ -573,6 +654,8 @@ private fun LazyListScope.bodyItems(
     bytes: Long,
     node: JsonNode?,
     rows: List<JsonRow>,
+    form: List<Pair<String, String>>?,
+    formRows: List<JsonRow>?,
     state: InspectorState,
     evicted: Boolean,
 ) {
@@ -591,7 +674,12 @@ private fun LazyListScope.bodyItems(
     item("body-meta") {
         Row(modifier = Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${contentType ?: "text/plain"} · ${formatBytes(bytes)}",
+                buildString {
+                    append(contentType ?: "text/plain").append(" · ").append(formatBytes(bytes))
+                    // Named explicitly, because a form body is usually posted under a
+                    // Content-Type that claims to be something else.
+                    if (form != null) append(" · form · ").append(form.size).append(" fields")
+                },
                 modifier = Modifier.weight(1f),
                 style = InspectorType.mono(10.5.sp, color = DebugPalette.textFaint, tabular = true),
             )
@@ -609,6 +697,31 @@ private fun LazyListScope.bodyItems(
                 }
             }
         }
+    }
+
+    if (formRows != null) {
+        // The same two-column table as the Headers tab: the question being asked of a form body
+        // is which parameter carried which value, and one long line answers it badly. A field
+        // whose value is itself a JSON document opens as a tree instead, indented on a panel so
+        // it reads as belonging to the row above it.
+        itemsIndexed(formRows, key = { _, row -> row.key }) { _, row ->
+            val plain = row is JsonRow.Leaf && row.depth == 0
+            if (plain) {
+                val value = ((row as JsonRow.Leaf).node as? JsonNode.Str)?.value.orEmpty()
+                KeyValueRow(row.label.orEmpty(), value.ifEmpty { "—" })
+                Hairline(color = DebugPalette.lineFaint)
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(DebugPalette.surface)
+                        .padding(horizontal = 10.dp),
+                ) {
+                    JsonRowView(row, state)
+                }
+            }
+        }
+        return
     }
 
     if (node == null) {
@@ -669,15 +782,11 @@ private fun LazyListScope.headerItems(request: NetworkRequest) {
 }
 
 private fun collectBranchPaths(node: JsonNode, path: String, out: MutableSet<String>) {
-    when (node) {
-        is JsonNode.Obj -> {
-            out += path
-            node.entries.forEach { collectBranchPaths(it.second, "$path.${it.first}", out) }
-        }
-        is JsonNode.Arr -> {
-            out += path
-            node.items.forEachIndexed { i, child -> collectBranchPaths(child, "$path[$i]", out) }
-        }
+    if (!node.isBranch()) return
+    out += path
+    when (val body = node.branchBody()) {
+        is JsonNode.Obj -> body.entries.forEach { collectBranchPaths(it.second, "$path.${it.first}", out) }
+        is JsonNode.Arr -> body.items.forEachIndexed { i, child -> collectBranchPaths(child, "$path[$i]", out) }
         else -> Unit
     }
 }
@@ -687,28 +796,52 @@ internal sealed class JsonRow(val path: String, val depth: Int, val key: String)
     class Branch(path: String, depth: Int, val label: String?, val node: JsonNode, val collapsed: Boolean) :
         JsonRow(path, depth, "b:$path")
     class Leaf(path: String, depth: Int, val label: String?, val node: JsonNode) : JsonRow(path, depth, "l:$path")
-    class Close(path: String, depth: Int, val isObj: Boolean) : JsonRow(path, depth, "c:$path")
+    class Close(path: String, depth: Int, val isObj: Boolean, val quoted: Boolean = false) :
+        JsonRow(path, depth, "c:$path")
 }
 
-internal fun flattenJson(root: JsonNode, collapsed: Set<String>): List<JsonRow> {
+internal fun flattenJson(
+    root: JsonNode,
+    collapsed: Set<String>,
+    rootPath: String = "$",
+    /** False renders a branch root's children directly, without a wrapping `{ … }` pair. */
+    includeRoot: Boolean = true,
+): List<JsonRow> {
     val out = ArrayList<JsonRow>()
-    fun walk(node: JsonNode, path: String, depth: Int, label: String?) {
-        if (node.isBranch()) {
-            val isCollapsed = path in collapsed
-            out += JsonRow.Branch(path, depth, label, node, isCollapsed)
-            if (isCollapsed) return
-            when (node) {
-                is JsonNode.Obj -> node.entries.forEach { (k, v) -> walk(v, "$path.$k", depth + 1, k) }
-                is JsonNode.Arr -> node.items.forEachIndexed { i, v -> walk(v, "$path[$i]", depth + 1, null) }
-                else -> Unit
-            }
-            out += JsonRow.Close(path, depth, node is JsonNode.Obj)
-        } else {
-            out += JsonRow.Leaf(path, depth, label, node)
+    fun children(node: JsonNode, path: String, depth: Int) {
+        when (val body = node.branchBody()) {
+            is JsonNode.Obj -> body.entries.forEach { (k, v) -> walkInto(out, collapsed, v, "$path.$k", depth, k) }
+            is JsonNode.Arr -> body.items.forEachIndexed { i, v -> walkInto(out, collapsed, v, "$path[$i]", depth, null) }
+            else -> Unit
         }
     }
-    walk(root, "$", 0, null)
+    if (!includeRoot && root.isBranch()) children(root, rootPath, 0)
+    else walkInto(out, collapsed, root, rootPath, 0, null)
     return out
+}
+
+private fun walkInto(
+    out: MutableList<JsonRow>,
+    collapsed: Set<String>,
+    node: JsonNode,
+    path: String,
+    depth: Int,
+    label: String?,
+) {
+    if (!node.isBranch()) {
+        out += JsonRow.Leaf(path, depth, label, node)
+        return
+    }
+    val isCollapsed = path in collapsed
+    out += JsonRow.Branch(path, depth, label, node, isCollapsed)
+    if (isCollapsed) return
+    val body = node.branchBody()
+    when (body) {
+        is JsonNode.Obj -> body.entries.forEach { (k, v) -> walkInto(out, collapsed, v, "$path.$k", depth + 1, k) }
+        is JsonNode.Arr -> body.items.forEachIndexed { i, v -> walkInto(out, collapsed, v, "$path[$i]", depth + 1, null) }
+        else -> Unit
+    }
+    out += JsonRow.Close(path, depth, body is JsonNode.Obj, quoted = node is JsonNode.Embedded)
 }
 
 /**
@@ -740,14 +873,19 @@ private fun JsonRowView(row: JsonRow, state: InspectorState) {
                 Text("${row.label}: ", style = InspectorType.mono(12.sp, color = DebugPalette.accent))
             }
             Text(
-                if (row.collapsed) row.node.collapsedLabel() else if (row.node is JsonNode.Obj) "{" else "[",
+                if (row.collapsed) {
+                    row.node.collapsedLabel()
+                } else {
+                    val quote = if (row.node is JsonNode.Embedded) "\"" else ""
+                    quote + if (row.node.branchBody() is JsonNode.Obj) "{" else "["
+                },
                 style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
             )
         }
 
         is JsonRow.Close -> Row(Modifier.fillMaxWidth().height(24.dp).padding(start = indent)) {
             Text(
-                if (row.isObj) "}" else "]",
+                (if (row.isObj) "}" else "]") + if (row.quoted) "\"" else "",
                 modifier = Modifier.padding(start = 14.dp),
                 style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
             )

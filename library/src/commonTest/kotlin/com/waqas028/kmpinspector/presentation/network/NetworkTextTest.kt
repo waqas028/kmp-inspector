@@ -1,6 +1,8 @@
 package com.waqas028.kmpinspector.presentation.network
 
+import com.waqas028.kmpinspector.data.JsonNode
 import com.waqas028.kmpinspector.data.parseJsonOrNull
+import com.waqas028.kmpinspector.data.withEmbeddedJson
 import com.waqas028.kmpinspector.domain.model.HttpHeader
 import com.waqas028.kmpinspector.domain.model.NetworkRequest
 import kotlin.test.Test
@@ -49,5 +51,35 @@ class NetworkTextTest {
         assertTrue(collapsed.none { it.path.startsWith("$.list[") })
         assertEquals(open.map { it.key }.toSet().size, open.size)
         assertTrue(collapsed.filterIsInstance<JsonRow.Branch>().single { it.path == "$.list" }.collapsed)
+    }
+
+    @Test
+    fun a_json_document_inside_a_string_flattens_into_its_own_rows() {
+        val node = parseJsonOrNull("""{"sort":"{\"minAge\":19,\"maxAge\":63}"}""")!!.withEmbeddedJson()
+
+        val open = flattenJson(node, emptySet())
+        assertTrue(open.any { it.path == "$.sort.minAge" }, open.map { it.path }.toString())
+        assertTrue(open.any { it.path == "$.sort.maxAge" })
+
+        // Collapsing the field hides what is inside it, and nothing else.
+        val shut = flattenJson(node, setOf("$.sort"))
+        assertTrue(shut.none { it.path.startsWith("$.sort.") })
+        assertTrue(shut.any { it.path == "$.sort" })
+    }
+
+    @Test
+    fun form_pairs_render_without_a_wrapping_root() {
+        val form = JsonNode.Obj(
+            listOf(
+                "page_size" to JsonNode.Str("15"),
+                "sort" to JsonNode.Str("""{"minAge":19}""").withEmbeddedJson(),
+            ),
+        )
+        val rows = flattenJson(form, emptySet(), rootPath = "form", includeRoot = false)
+
+        // No "form" row of its own: the fields start at the top level.
+        assertTrue(rows.none { it.path == "form" }, rows.map { it.path }.toString())
+        assertEquals(0, rows.first { it.path == "form.page_size" }.depth)
+        assertTrue(rows.any { it.path == "form.sort.minAge" })
     }
 }

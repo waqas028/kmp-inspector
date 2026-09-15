@@ -13,6 +13,33 @@ internal sealed interface JsonNode {
     data object Null : JsonNode
     data class Arr(val items: List<JsonNode>) : JsonNode
     data class Obj(val entries: List<Pair<String, JsonNode>>) : JsonNode
+
+    /**
+     * A string whose content is itself JSON. Plenty of APIs pass a whole document inside one
+     * string field, and as a single escaped line it is unreadable. Keeping [raw] next to
+     * [parsed] lets the viewer show a tree while still saying it arrived as a string.
+     */
+    data class Embedded(val raw: String, val parsed: JsonNode) : JsonNode
+}
+
+/**
+ * Replaces every string that holds a JSON object or array with an [JsonNode.Embedded] wrapper,
+ * all the way down. Bare numbers and quoted words are left alone: they already read fine, and a
+ * tree around `15` would be noise.
+ */
+internal fun JsonNode.withEmbeddedJson(): JsonNode = when (this) {
+    is JsonNode.Str -> parseEmbeddedJson(value)?.let { JsonNode.Embedded(value, it) } ?: this
+    is JsonNode.Arr -> JsonNode.Arr(items.map { it.withEmbeddedJson() })
+    is JsonNode.Obj -> JsonNode.Obj(entries.map { (k, v) -> k to v.withEmbeddedJson() })
+    else -> this
+}
+
+/** Parses [text] only if it is an object or array, and expands anything nested inside it too. */
+internal fun parseEmbeddedJson(text: String): JsonNode? {
+    val trimmed = text.trim()
+    // Cheap gate first: this runs over every string in a body.
+    if (trimmed.length < 2 || (trimmed[0] != '{' && trimmed[0] != '[')) return null
+    return parseJsonOrNull(trimmed)?.takeIf { it.isBranch() }?.withEmbeddedJson()
 }
 
 internal fun parseJsonOrNull(text: String): JsonNode? = try {
@@ -136,7 +163,13 @@ private class JsonParser(private val s: String) {
 internal fun JsonNode.collapsedLabel(): String = when (this) {
     is JsonNode.Obj -> "{ … ${entries.size} ${if (entries.size == 1) "key" else "keys"} }"
     is JsonNode.Arr -> "[ … ${items.size} ${if (items.size == 1) "item" else "items"} ]"
+    // Quoted, so a collapsed embedded document still reads as the string it really is.
+    is JsonNode.Embedded -> "\"" + parsed.collapsedLabel() + "\""
     else -> ""
 }
 
-internal fun JsonNode.isBranch() = this is JsonNode.Obj || this is JsonNode.Arr
+internal fun JsonNode.isBranch() =
+    this is JsonNode.Obj || this is JsonNode.Arr || this is JsonNode.Embedded
+
+/** The node whose children a branch actually has; for an embedded document, the parsed one. */
+internal fun JsonNode.branchBody(): JsonNode = if (this is JsonNode.Embedded) parsed else this
