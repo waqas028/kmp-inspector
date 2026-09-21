@@ -59,8 +59,15 @@ object Inspector {
      */
     fun installCrashHandler(appPackagePrefix: String? = null) {
         if (!enabled) return
+        // Idempotent on purpose. Each install chains onto the handler before it, so calling this
+        // twice made a single crash run both and record itself twice. Android's install() already
+        // calls this, and shared Compose code calling it again is the obvious way to hit that.
+        if (crashHandlerInstalled) return
+        crashHandlerInstalled = true
         installPlatformCrashHandler(appPackagePrefix)
     }
+
+    private var crashHandlerInstalled = false
 
     /** Drops persisted crashes as well as the in-memory list. */
     fun clearCrashes() = InspectorStore.clearCrashes()

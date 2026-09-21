@@ -155,6 +155,9 @@ internal object InspectorStore {
 
     fun addCrash(record: CrashRecord) {
         if (!enabled) return
+        // The list is keyed by id in a LazyColumn, where a repeat is a crash in the host app, so
+        // uniqueness is enforced here rather than trusted from callers.
+        if (crashes.any { it.id == record.id }) return
         crashes.add(0, record)
         unreadCount++
         if (record.fatal) unreadCrashes++
@@ -175,9 +178,15 @@ internal object InspectorStore {
         restored = true
         val stored = runCatching { CrashFile.read()?.let(CrashCodec::decode) }.getOrNull().orEmpty()
         if (stored.isEmpty()) return
-        crashes.addAll(stored)
+        // A crash recorded in this session is already persisted, so restoring blindly would add a
+        // second copy of it under the same id.
+        val fresh = stored.filter { s -> crashes.none { it.id == s.id } }
+        crashes.addAll(fresh)
+        // Ids restored from disk were minted by an earlier run; keep the counter above them so a
+        // new record can never reuse one.
+        stored.maxOfOrNull { it.id }?.let(::ensureIdAbove)
         // Restored crashes are unread by definition - nobody has seen them yet.
-        unreadCrashes += stored.count { it.fatal }
+        unreadCrashes += fresh.count { it.fatal }
     }
 
     private var restored = false
@@ -230,6 +239,16 @@ internal object InspectorStore {
     }
 
     internal fun nextPublicId(): Long = nextId()
+
+    /** Raises the counter so freshly minted ids sit above anything already in the list. */
+    @OptIn(ExperimentalAtomicApi::class)
+    internal fun ensureIdAbove(value: Long) {
+        while (true) {
+            val current = nextId.load()
+            if (current >= value) return
+            if (nextId.compareAndSet(current, value)) return
+        }
+    }
 
     /**
      * Called every time the inspector is opened. Collectors that hold a snapshot rather than a

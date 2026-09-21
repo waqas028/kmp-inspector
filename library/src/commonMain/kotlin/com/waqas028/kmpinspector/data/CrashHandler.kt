@@ -31,7 +31,9 @@ internal fun captureFatal(
     }
     InspectorStore.addCrash(
         CrashRecord(
-            id = InspectorPlatform.currentTimeMillis(),
+            // From the shared counter, never the clock: two handlers firing for one
+            // crash read the same millisecond and produced two records with one id.
+            id = InspectorStore.nextPublicId(),
             fatal = true,
             exceptionType = type,
             message = message,
