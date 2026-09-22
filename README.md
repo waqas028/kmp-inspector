@@ -54,8 +54,8 @@ Use the real artifact in debug builds and the `no-op` twin in release. The no-op
 ```kotlin
 // build.gradle.kts
 dependencies {
-    debugImplementation("io.github.waqas028:kmp-inspector:1.0.0-beta04")
-    releaseImplementation("io.github.waqas028:kmp-inspector-no-op:1.0.0-beta04")
+    debugImplementation("io.github.waqas028:kmp-inspector:1.0.0")
+    releaseImplementation("io.github.waqas028:kmp-inspector-no-op:1.0.0")
 }
 ```
 
@@ -63,7 +63,7 @@ Using a version catalog? Add both to `gradle/libs.versions.toml`:
 
 ```toml
 [versions]
-kmp-inspector = "1.0.0-beta04"
+kmp-inspector = "1.0.0"
 
 [libraries]
 kmp-inspector = { module = "io.github.waqas028:kmp-inspector", version.ref = "kmp-inspector" }
@@ -355,9 +355,9 @@ val inspectorEnabled = System.getenv("CONFIGURATION") != "Release" &&
 sourceSets {
     commonMain.dependencies {
         if (inspectorEnabled) {
-            implementation("io.github.waqas028:kmp-inspector:1.0.0-beta04")
+            implementation("io.github.waqas028:kmp-inspector:1.0.0")
         } else {
-            implementation("io.github.waqas028:kmp-inspector-no-op:1.0.0-beta04")
+            implementation("io.github.waqas028:kmp-inspector-no-op:1.0.0")
         }
     }
 }
