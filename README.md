@@ -186,8 +186,8 @@ kotlin {
             implementation("io.github.waqas028:kmp-inspector:1.0.1")
 
             // Optional companions, always the same version as the line above
-            implementation("io.github.waqas028:kmp-inspector-ktor:1.0.0")   // Network panel from Ktor
-            implementation("io.github.waqas028:kmp-inspector-room:1.0.0")   // Database panel from Room
+            implementation("io.github.waqas028:kmp-inspector-ktor:1.0.1")   // Network panel from Ktor
+            implementation("io.github.waqas028:kmp-inspector-room:1.0.1")   // Database panel from Room
         }
     }
 }
