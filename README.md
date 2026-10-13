@@ -51,12 +51,13 @@ https://github.com/user-attachments/assets/2402e153-4ebc-4777-b207-e82a02f13939
 
 Pick the guide that matches your project. Each one is complete on its own.
 
-| Your project                                                             | Guide                                                                                   |
-|--------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| **Native Android** (XML, Fragments, Jetpack Compose, or a mix)           | [Setup for a native Android project](#setup-for-a-native-android-project)               |
-| **Compose Multiplatform (CMP)** (shared UI for Android, iOS and desktop) | [Setup for a Compose Multiplatform project](#setup-for-a-compose-multiplatform-project) |
+| Your project                                                                                 | Guide                                                                                                                                       |
+|----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| **Native Android**: XML, Fragments, Jetpack Compose, or a mix                                | [Setup for a native Android project](#setup-for-a-native-android-project)                                                                   |
+| **Compose Multiplatform (CMP)**: one Compose UI shared by Android, iOS and desktop           | [Setup for a Compose Multiplatform project](#setup-for-a-compose-multiplatform-project)                                                     |
+| **Kotlin Multiplatform (KMP) with native screens**: shared logic, SwiftUI and XML/Compose UI | Your Android app follows the [native Android guide](#setup-for-a-native-android-project). iOS is not covered: the inspector draws with Compose, and a SwiftUI app has no Compose surface to draw on |
 
-The short rule: on native Android the library collects on its own after one call. In a Compose Multiplatform app you wrap your UI once, and two companion artifacts fill the panels on every platform.
+The short rule: on native Android the library collects on its own after one call. In a Compose Multiplatform app you wrap your UI once, and two companion artifacts fill the panels on every platform. KMP alone shares code; CMP also shares the UI, and the inspector is UI, so it needs CMP (or Android) to show up.
 
 Both guides use the latest version from the badge above and need `mavenCentral()` in your repositories (in `settings.gradle.kts`):
 
@@ -173,12 +174,12 @@ KmpInspector.install(
 
 ## Setup for a Compose Multiplatform project
 
-For a Compose Multiplatform (CMP) app with a shared module. You wrap your UI once in shared code, and Android, iOS and desktop all get the bubble.
+For a Compose Multiplatform (CMP) app with a shared Compose module: `composeApp` if you started from the Kotlin Multiplatform wizard, `shared` in older templates. You wrap your UI once in that module, and Android, iOS and desktop all get the bubble.
 
 ### Step 1: Add the dependencies to your shared module
 
 ```kotlin
-// shared/build.gradle.kts
+// composeApp/build.gradle.kts (or shared/build.gradle.kts)
 kotlin {
     sourceSets {
         commonMain.dependencies {
@@ -192,7 +193,7 @@ kotlin {
 }
 ```
 
-If your Android app is a separate module that calls the inspector itself (Step 4 does), declare the first line as `api(...)` so that module can see it.
+With the wizard's `composeApp` layout, the Android `Application` and `MainActivity` sit in the same module (`androidMain`), so this is all the dependency setup. If your Android app is a separate module that calls the inspector itself (Step 4 does), declare the first line as `api(...)` so that module can see it.
 
 A shared module has no debug/release split of its own, so the real artifact goes in with `implementation`. You switch it off at runtime and swap in the no-op at build time; both are covered in [Keeping it out of release builds](#keeping-it-out-of-release-builds). The artifact ships the R8 rules it needs.
 
