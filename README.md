@@ -47,12 +47,38 @@ https://github.com/user-attachments/assets/2402e153-4ebc-4777-b207-e82a02f13939
 
 
 
-## Installation
+## Which setup do I need?
 
-Use the real artifact in debug builds and the `no-op` twin in release. The no-op has the same classes and signatures with empty bodies, so every call site compiles and your release APK carries no inspector code, fonts or collectors. Use the latest version from the badge above.
+Pick the guide that matches your project. Each one is complete on its own.
+
+| Your project                                                             | Guide                                                                                   |
+|--------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| **Native Android** (XML, Fragments, Jetpack Compose, or a mix)           | [Setup for a native Android project](#setup-for-a-native-android-project)               |
+| **Compose Multiplatform (CMP)** (shared UI for Android, iOS and desktop) | [Setup for a Compose Multiplatform project](#setup-for-a-compose-multiplatform-project) |
+
+The short rule: on native Android the library collects on its own after one call. In a Compose Multiplatform app you wrap your UI once, and two companion artifacts fill the panels on every platform.
+
+Both guides use the latest version from the badge above and need `mavenCentral()` in your repositories (in `settings.gradle.kts`):
 
 ```kotlin
-// build.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+```
+
+## Setup for a native Android project
+
+For an app with XML layouts, Fragments, Jetpack Compose, or a mix. You do not wrap any screen, and you do not need Compose in your own code.
+
+### Step 1: Add the dependency
+
+Use the real artifact in debug builds and the `no-op` twin in release. The no-op has the same classes and signatures with empty bodies, so every call site compiles and your release APK carries no inspector code, fonts or collectors.
+
+```kotlin
+// app/build.gradle.kts
 dependencies {
     debugImplementation("io.github.waqas028:kmp-inspector:1.0.0")
     releaseImplementation("io.github.waqas028:kmp-inspector-no-op:1.0.0")
@@ -71,46 +97,15 @@ kmp-inspector-noop = { module = "io.github.waqas028:kmp-inspector-no-op", versio
 ```
 
 ```kotlin
-// build.gradle.kts
+// app/build.gradle.kts
 debugImplementation(libs.kmp.inspector)
 releaseImplementation(libs.kmp.inspector.noop)
 ```
 
-Two optional companions live at the same version. `kmp-inspector-ktor` records Ktor client calls on every platform, and `kmp-inspector-room` shows a Room database on desktop and iOS as well as Android:
+### Step 2: Install it in your `Application` class
 
 ```kotlin
-implementation("io.github.waqas028:kmp-inspector-ktor:1.0.0-beta03")
-implementation("io.github.waqas028:kmp-inspector-room:1.0.0-beta03")
-```
-
-A Compose Multiplatform shared module has no debug/release split of its own, so add the real artifact there with `implementation` and rely on `KmpInspector(enabled = ...)` and `install(enabled = ...)` to switch it off; both are no-ops when disabled, and the artifact ships the R8 rules it needs.
-
-Make sure `mavenCentral()` is in your repositories (in `settings.gradle.kts`):
-
-```kotlin
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-```
-
-## Quick start
-
-### Which setup do I need?
-
-| Your app                                                | Setup                                                                                      | What fills itself                                                                                                | What you feed by hand                                                                                                                |
-|---------------------------------------------------------|--------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| **Android** — XML, Fragments, Jetpack Compose, or a mix | `KmpInspector.install(this)` in `Application`, plus one line for OkHttp and one for Room   | Bubble on every screen, crashes, logs (logcat), background work (WorkManager), network (OkHttp), database (Room) | Nothing, unless you use another HTTP client or database                                                                              |
-| **Compose Multiplatform** — Android target              | Same as Android above. `install` in the Android `Application`; do not also wrap on Android | Same as Android                                                                                                  | Nothing                                                                                                                              |
-| **Compose Multiplatform** — iOS and desktop targets     | Wrap the root composable in `KmpInspector { }`                                             | The bubble and the inspector UI only                                                                             | Everything: `Inspector.recordRequest`, `Inspector.setDatabase`, `Inspector.setWork`, `InspectorLog`, `Inspector.installCrashHandler` |
-
-The short rule: on Android the library collects on its own; off Android it draws the UI and you feed it. A Ktor plugin that would give the Network panel to iOS and desktop automatically is the next planned collector.
-
-### Android: one call, nothing to wrap
-
-```kotlin
+import android.app.Application
 import com.waqas028.kmpinspector.KmpInspector
 
 class MyApplication : Application() {
@@ -121,36 +116,90 @@ class MyApplication : Application() {
 }
 ```
 
-That single call floats the bubble over **every** Activity (XML, Fragments, Compose, or a mix), captures fatal crashes across restarts, streams the app's own logcat into the Logs panel, and mirrors WorkManager's job list into Background Work when WorkManager is on your classpath. It is a no-op unless the build is `debuggable`, so release builds get nothing.
+If your app had no `Application` class before, register the new one in `AndroidManifest.xml`:
 
-Two sources cannot be discovered from outside your code and stay one line each:
+```xml
+<application
+    android:name=".MyApplication"
+    ... >
+```
+
+That single call floats the bubble over your screens (XML, Fragments, Compose, or a mix), captures fatal crashes across restarts, streams the app's own logcat into the Logs panel, and mirrors WorkManager's job list into Background Work when WorkManager is on your classpath. It is a no-op unless the build is `debuggable`, so release builds get nothing.
+
+### Step 3: Network — add the OkHttp interceptor
 
 ```kotlin
-// Network — add after your header interceptors so the recorded request is what was sent
-OkHttpClient.Builder()
-    .addInterceptor(KmpInspectorInterceptor())   // com.waqas028.kmpinspector.okhttp
+import com.waqas028.kmpinspector.okhttp.KmpInspectorInterceptor
 
-// Database — Room 2.7+. Snapshots now and again each time the inspector is opened
+val client = OkHttpClient.Builder()
+    // your header interceptors first, so the recorded request is what was sent
+    .addInterceptor(KmpInspectorInterceptor())
+    .build()
+```
+
+Retrofit runs on OkHttp, so this covers Retrofit too: pass the client to `Retrofit.Builder().client(client)`.
+
+### Step 4: Database — attach your Room database
+
+```kotlin
+// Room 2.7+. Snapshots now and again each time the inspector is opened
 KmpInspector.attach(database, fileName = "app.db")
 ```
 
+### Step 5: Run a debug build
+
+A draggable bubble now floats over your app. Tap it to open the inspector.
+
+Steps 3 and 4 are optional: skip one and only that panel stays empty. OkHttp, Room and WorkManager are `compileOnly` dependencies of the library, so you only need them on your classpath if you use that collector. For another HTTP client or database, see [Feeding it data](#feeding-it-data).
+
+### Options
+
 `install` takes a few options: `enabled` (defaults to the manifest's debuggable flag), `appPackagePrefix` for highlighting your stack frames, `captureLogcat`, `captureWorkManager`, and `excludeActivity` for screens that should not get the bubble, such as a splash. `appPackagePrefix` defaults to the application id; if your flavors use an `applicationIdSuffix`, pass your source package (for example `"com.example.shop"`) so the highlighted frames are really yours. Do not also wrap Compose content in `KmpInspector { }` on Android when using `install`, or you will see two bubbles.
 
-OkHttp, Room and WorkManager are `compileOnly` dependencies of the library. You only need them on your classpath if you use that collector.
+### Which screens get the bubble
 
-### Panel actions
+- **Shown** on every Activity built on AndroidX `ComponentActivity`, which includes `AppCompatActivity`, `FragmentActivity` and Compose activities.
+- **Skipped, without a crash,** on screens that cannot host it: a plain `android.app.Activity`, and any Activity that never sets a content view. The usual example is a library's hand-off screen, such as Firebase Auth opening reCAPTCHA in the browser.
+- **Skipped** on anything `excludeActivity` returns `true` for.
 
-Every list has a sort toggle on its status line and a floating "Top" pill once you scroll. Network and Logs have **Clear**. Logs has **Share**, which sends the currently filtered lines as text. A table in Database has **CSV**, which shares the visible rows. The SQL editor runs real `SELECT` and `WITH` statements when a live database is attached, and falls back to showing the snapshot of the table named in the `FROM` clause otherwise.
-
-### Sharing safely
-
-Share as cURL or Text masks `Authorization`, `Cookie`, `Set-Cookie`, `Proxy-Authorization` and `X-Api-Key` values, since shared text tends to end up in chats. The Headers tab and the clipboard copy stay verbatim. Change the list with `Inspector.redactHeaders(setOf(...))`, or pass an empty set to share everything.
-
-### Compose Multiplatform: wrap once
-
-Wrap your root composable once. The bubble and the whole inspector come from the library — you build none of that UI yourself.
+Screens from other libraries that do show content get the bubble too. To keep it on your own screens only, exclude everything outside your package:
 
 ```kotlin
+KmpInspector.install(
+    this,
+    excludeActivity = { !it.javaClass.name.startsWith("com.example.shop") },
+)
+```
+
+## Setup for a Compose Multiplatform project
+
+For a Compose Multiplatform (CMP) app with a shared module. You wrap your UI once in shared code, and Android, iOS and desktop all get the bubble.
+
+### Step 1: Add the dependencies to your shared module
+
+```kotlin
+// shared/build.gradle.kts
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation("io.github.waqas028:kmp-inspector:1.0.0")
+
+            // Optional companions, always the same version as the line above
+            implementation("io.github.waqas028:kmp-inspector-ktor:1.0.0")   // Network panel from Ktor
+            implementation("io.github.waqas028:kmp-inspector-room:1.0.0")   // Database panel from Room
+        }
+    }
+}
+```
+
+If your Android app is a separate module that calls the inspector itself (Step 4 does), declare the first line as `api(...)` so that module can see it.
+
+A shared module has no debug/release split of its own, so the real artifact goes in with `implementation`. You switch it off at runtime and swap in the no-op at build time; both are covered in [Keeping it out of release builds](#keeping-it-out-of-release-builds). The artifact ships the R8 rules it needs.
+
+### Step 2: Wrap your root composable
+
+```kotlin
+// commonMain
 import com.waqas028.kmpinspector.KmpInspector
 
 @Composable
@@ -163,39 +212,50 @@ fun App() {
 }
 ```
 
-That's the whole visual integration. A draggable bubble now floats over your app; tapping it opens the inspector.
+That is the whole visual integration. The bubble and the inspector come from the library; you build none of that UI yourself.
 
-If you have a **shared Compose Multiplatform module**, wrap your UI here once and every platform gets the overlay for free — then each platform just hosts this `App()` in its native entry point, as shown below.
+### Step 3: Feed the panels
 
-The wrapper draws the UI; it does not collect anything. On iOS and desktop every panel stays empty until your code reports into it — see [Feeding it data](#feeding-it-data). On the Android target, prefer `KmpInspector.install(this)` in your `Application` instead of wrapping, and you get the collectors listed above for free. If you wrap in shared code *and* call `install` on Android, pass `enabled = !isAndroid` (or similar) to the wrapper so Android does not show two bubbles.
-
-## Platform setup
-
-The examples below host the same `App()` composable on each platform. If your app is single-platform, use the section that applies.
-
-### Android
-
-If you used `KmpInspector.install(this)` above, there is nothing else to do on Android and you can skip this section. The manual route below is for apps that prefer to place the overlay themselves.
-
-Jetpack Compose apps host `App()` in an `Activity`:
+The wrapper draws the UI. It does not collect anything, so every panel stays empty until your code reports into it. Do this once at startup, in shared code:
 
 ```kotlin
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            KmpInspector {
-                MyAppContent()
-            }
-        }
-    }
+// commonMain
+import com.waqas028.kmpinspector.Inspector
+import com.waqas028.kmpinspector.ktor.KmpInspectorPlugin
+import com.waqas028.kmpinspector.room.RoomInspector
+
+// Header label, shown as "com.example.shop · debug"
+Inspector.configure(appId = "com.example.shop", variant = "debug")
+
+// Crashes: keep fatal crashes across restarts
+Inspector.installCrashHandler(appPackagePrefix = "com.example.shop")
+
+// Network: every Ktor call, on every platform
+val client = HttpClient {
+    install(KmpInspectorPlugin)
 }
+
+// Database: your Room database, on every platform
+RoomInspector.attach(database, fileName = "app.db")
 ```
 
-**One extra Android step** — give the inspector a `Context` in your `Application`, so crashes survive process death and the crash **Share** button works:
+Logs come from your own `InspectorLog.i("Tag", "message")` calls. Not on Ktor or Room? Report through the plain `Inspector` calls in [Feeding it data](#feeding-it-data).
+
+### Step 4: Host `App()` on each platform
+
+#### Android
+
+Show `App()` from an Activity, and give the inspector a `Context` in your `Application`, so crashes survive process death and the crash **Share** button works:
 
 ```kotlin
 import com.waqas028.kmpinspector.data.initializeInspector
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent { App() }
+    }
+}
 
 class MyApplication : Application() {
     override fun onCreate() {
@@ -205,9 +265,9 @@ class MyApplication : Application() {
 }
 ```
 
-Without it the library still runs, but the crash buffer is in-memory only and sharing is disabled.
+Register `MyApplication` in `AndroidManifest.xml` with `android:name=".MyApplication"`. Without `initializeInspector` the library still runs, but the crash buffer is in-memory only and sharing is disabled.
 
-### iOS
+#### iOS
 
 Host your Compose UI in a `ComposeUIViewController` on the Kotlin side:
 
@@ -215,11 +275,7 @@ Host your Compose UI in a `ComposeUIViewController` on the Kotlin side:
 // iosMain
 import androidx.compose.ui.window.ComposeUIViewController
 
-fun MainViewController() = ComposeUIViewController {
-    KmpInspector {
-        MyAppContent()
-    }
-}
+fun MainViewController() = ComposeUIViewController { App() }
 ```
 
 Then present it from Swift:
@@ -240,7 +296,7 @@ struct ContentView: View {
 }
 ```
 
-### Desktop (JVM)
+#### Desktop (JVM)
 
 Compose for Desktop hosts `App()` in a `Window`:
 
@@ -250,12 +306,41 @@ import androidx.compose.ui.window.application
 
 fun main() = application {
     Window(onCloseRequest = ::exitApplication, title = "My App") {
-        KmpInspector {
+        App()
+    }
+}
+```
+
+### Optional: the Android collectors in a Compose Multiplatform app
+
+The Android target can also use everything from the [native Android guide](#setup-for-a-native-android-project): logcat in the Logs panel, WorkManager in Background Work, and the OkHttp interceptor. Call `KmpInspector.install(this)` in your `Application` instead of `initializeInspector(this)`.
+
+`install` draws its own bubble on every Activity, so switch the wrapper off on Android or you will see two bubbles:
+
+```kotlin
+// commonMain
+@Composable
+fun App(showInspector: Boolean = true) {
+    MaterialTheme {
+        KmpInspector(enabled = showInspector) {
             MyAppContent()
         }
     }
 }
+
+// Android Activity: install() already draws the bubble here
+setContent { App(showInspector = false) }
 ```
+
+## Using the inspector
+
+### Panel actions
+
+Every list has a sort toggle on its status line and a floating "Top" pill once you scroll. Network and Logs have **Clear**. Logs has **Share**, which sends the currently filtered lines as text. A table in Database has **CSV**, which shares the visible rows. The SQL editor runs real `SELECT` and `WITH` statements when a live database is attached, and falls back to showing the snapshot of the table named in the `FROM` clause otherwise.
+
+### Sharing safely
+
+Share as cURL or Text masks `Authorization`, `Cookie`, `Set-Cookie`, `Proxy-Authorization` and `X-Api-Key` values, since shared text tends to end up in chats. The Headers tab and the clipboard copy stay verbatim. Change the list with `Inspector.redactHeaders(setOf(...))`, or pass an empty set to share everything.
 
 ## Feeding it data
 
@@ -337,7 +422,7 @@ This is a runtime guarantee, not a packaging one. The classes are still in the b
 
 | Target | Does unused code get removed? | What to do |
 |---|---|---|
-| Android | Yes, R8 | Use the `debugImplementation` / `releaseImplementation` split from [Installation](#installation). Release builds link the no-op and contain nothing from the inspector. |
+| Android | Yes, R8 | Use the `debugImplementation` / `releaseImplementation` split from [the native Android setup](#setup-for-a-native-android-project). Release builds link the no-op and contain nothing from the inspector. |
 | iOS | Yes, Kotlin/Native dead-code elimination — **unless** the framework exports the library | Do not `export(...)` the inspector from your framework, and do not switch on `transitiveExport`. Exporting keeps its whole public API alive by definition. Then swap in the no-op for release builds as well. |
 | Desktop (JVM) | No | Nothing is stripped, ever. The only way to keep the code out is to depend on the no-op artifact in the distribution you ship. |
 
