@@ -25,7 +25,8 @@ import com.waqas028.kmpinspector.data.initializeInspector
  * ```
  *
  * What it does:
- * - floats the bubble over **every** Activity, XML or Compose, without wrapping anything;
+ * - floats the bubble over **every** Activity, XML or Compose, without wrapping anything. Screens
+ *   that show no content of their own, such as a library's browser hand-off, are left alone;
  * - captures fatal crashes and keeps them across restarts;
  * - streams this process's logcat into the Logs panel;
  * - mirrors WorkManager's job list into the Background Work panel when WorkManager is on the
