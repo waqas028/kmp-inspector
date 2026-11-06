@@ -81,8 +81,8 @@ Use the real artifact in debug builds and the `no-op` twin in release. The no-op
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    debugImplementation("io.github.waqas028:kmp-inspector:1.0.1")
-    releaseImplementation("io.github.waqas028:kmp-inspector-no-op:1.0.1")
+    debugImplementation("io.github.waqas028:kmp-inspector:1.0.2")
+    releaseImplementation("io.github.waqas028:kmp-inspector-no-op:1.0.2")
 }
 ```
 
@@ -90,7 +90,7 @@ Using a version catalog? Add both to `gradle/libs.versions.toml`:
 
 ```toml
 [versions]
-kmp-inspector = "1.0.1"
+kmp-inspector = "1.0.2"
 
 [libraries]
 kmp-inspector = { module = "io.github.waqas028:kmp-inspector", version.ref = "kmp-inspector" }
@@ -183,7 +183,7 @@ For a Compose Multiplatform (CMP) app with a shared Compose module: `composeApp`
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.waqas028:kmp-inspector:1.0.1")
+            implementation("io.github.waqas028:kmp-inspector:1.0.2")
 
             // Optional companions, always the same version as the line above
             implementation("io.github.waqas028:kmp-inspector-ktor:1.0.1")   // Network panel from Ktor
@@ -447,9 +447,9 @@ val inspectorEnabled = System.getenv("CONFIGURATION") != "Release" &&
 sourceSets {
     commonMain.dependencies {
         if (inspectorEnabled) {
-            implementation("io.github.waqas028:kmp-inspector:1.0.1")
+            implementation("io.github.waqas028:kmp-inspector:1.0.2")
         } else {
-            implementation("io.github.waqas028:kmp-inspector-no-op:1.0.1")
+            implementation("io.github.waqas028:kmp-inspector-no-op:1.0.2")
         }
     }
 }
