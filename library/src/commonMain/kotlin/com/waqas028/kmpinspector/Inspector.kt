@@ -155,8 +155,8 @@ object Inspector {
 
     /**
      * Header names (case-insensitive) whose values are masked in anything shared off the device.
-     * Defaults cover Authorization, Cookie, Set-Cookie, Proxy-Authorization and X-Api-Key; pass an
-     * empty set to share everything verbatim.
+     * None by default, so a shared cURL carries its token and replays as-is. To keep secrets out
+     * of chats, pass e.g. `setOf("Authorization", "Cookie", "Set-Cookie")`.
      */
     fun redactHeaders(names: Set<String>) {
         InspectorStore.redactedHeaders = names.map { it.lowercase() }.toSet()

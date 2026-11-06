@@ -618,7 +618,8 @@ private fun ShareRequest(request: NetworkRequest, tab: RequestDetailTab, curl: S
             onDismissRequest = { open = false },
             modifier = Modifier.background(DebugPalette.surfaceRaised),
         ) {
-            // Shares leave the device, so secrets are masked; the clipboard copy stays verbatim.
+            // Shares mask only the headers the app opted to redact (none by default, so a shared
+            // cURL replays with its token); the clipboard copy is always verbatim.
             ShareItem("cURL") { open = false; InspectorShare.share(curlFor(request, redact = true), subject) }
             ShareItem("Text") { open = false; InspectorShare.share(shareableText(request, redact = true), subject) }
             ShareItem("Body") {

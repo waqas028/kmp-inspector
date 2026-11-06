@@ -1,5 +1,6 @@
 package com.waqas028.kmpinspector.presentation.network
 
+import com.waqas028.kmpinspector.Inspector
 import com.waqas028.kmpinspector.data.JsonNode
 import com.waqas028.kmpinspector.data.parseJsonOrNull
 import com.waqas028.kmpinspector.data.withEmbeddedJson
@@ -21,16 +22,28 @@ class NetworkTextTest {
     )
 
     @Test
-    fun sharing_masks_secrets_but_the_clipboard_copy_keeps_them() {
-        val shared = shareableText(request, redact = true)
-        assertTrue(shared.contains("Authorization: <redacted>"))
-        assertTrue(shared.contains("Set-Cookie: <redacted>"))
-        assertTrue(shared.contains("Accept: application/json"))
-        assertFalse(shared.contains("secret-token"))
+    fun a_shared_curl_keeps_its_token_by_default_so_it_replays() {
+        assertTrue(curlFor(request, redact = true).contains("Authorization: Bearer secret-token"))
+        assertTrue(shareableText(request, redact = true).contains("Set-Cookie: session=abc"))
+    }
 
-        val copied = curlFor(request)
-        assertTrue(copied.contains("Bearer secret-token"))
-        assertTrue(curlFor(request, redact = true).contains("Authorization: <redacted>"))
+    @Test
+    fun sharing_masks_only_the_headers_the_app_names_and_the_clipboard_keeps_them() {
+        Inspector.redactHeaders(setOf("Authorization", "Set-Cookie"))
+        try {
+            val shared = shareableText(request, redact = true)
+            assertTrue(shared.contains("Authorization: <redacted>"))
+            assertTrue(shared.contains("Set-Cookie: <redacted>"))
+            assertTrue(shared.contains("Accept: application/json"))
+            assertFalse(shared.contains("secret-token"))
+            assertTrue(curlFor(request, redact = true).contains("Authorization: <redacted>"))
+
+            // The clipboard copy is never masked.
+            assertTrue(curlFor(request).contains("Bearer secret-token"))
+        } finally {
+            // Global state: put the default back for the other tests.
+            Inspector.redactHeaders(emptySet())
+        }
     }
 
     @Test

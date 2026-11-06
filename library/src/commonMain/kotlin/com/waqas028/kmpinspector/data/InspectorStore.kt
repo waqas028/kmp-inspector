@@ -37,9 +37,10 @@ internal object InspectorStore {
 
     /**
      * Header names whose values are masked in anything that leaves the device through Share.
-     * The in-app Headers tab and the clipboard still show them in full.
+     * Empty by default: QA shares a cURL so a developer can replay the request, and without its
+     * token the replay fails. The in-app Headers tab and the clipboard always show values in full.
      */
-    var redactedHeaders: Set<String> = setOf("authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key")
+    var redactedHeaders: Set<String> = emptySet()
 
     /**
      * Whether the inspector is open, and where the bubble sits. Shared rather than remembered per
