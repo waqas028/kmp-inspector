@@ -885,8 +885,13 @@ private fun walkInto(
 }
 
 /**
- * Rows: 36dp for a collapsible branch (whole row is the target), 24dp for a leaf, 14dp indent per
- * level. Long values wrap; nothing scrolls sideways.
+ * Rows: at least 36dp for a collapsible branch (whole row is the target), 24dp for a leaf, 14dp
+ * indent per level. Long values wrap; nothing scrolls sideways.
+ *
+ * The key and its value are one Text, never two side by side. As two, the key is measured first
+ * and keeps its full width, so a long key on a deeply indented line left the value a sliver one
+ * letter wide and it wrapped a character per line. As one, the value flows on after the key and
+ * wraps onto full-width lines below it.
  */
 @Composable
 private fun JsonRowView(row: JsonRow, state: InspectorState) {
@@ -895,13 +900,14 @@ private fun JsonRowView(row: JsonRow, state: InspectorState) {
         is JsonRow.Branch -> Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(36.dp)
+                // A minimum, not a fixed height: a long key wraps instead of being clipped.
+                .heightIn(min = 36.dp)
                 .clickable {
                     state.collapsedJsonPaths =
                         if (row.collapsed) state.collapsedJsonPaths - row.path
                         else state.collapsedJsonPaths + row.path
                 }
-                .padding(start = indent),
+                .padding(start = indent, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -909,17 +915,22 @@ private fun JsonRowView(row: JsonRow, state: InspectorState) {
                 modifier = Modifier.width(14.dp),
                 style = InspectorType.mono(10.sp, color = DebugPalette.textFaint),
             )
-            if (row.label != null) {
-                Text("${row.label}: ", style = InspectorType.mono(12.sp, color = DebugPalette.accent))
-            }
             Text(
-                if (row.collapsed) {
-                    row.node.collapsedLabel()
-                } else {
-                    val quote = if (row.node is JsonNode.Embedded) "\"" else ""
-                    quote + if (row.node.branchBody() is JsonNode.Obj) "{" else "["
+                buildAnnotatedString {
+                    if (row.label != null) {
+                        withStyle(SpanStyle(color = DebugPalette.accent)) { append("${row.label}: ") }
+                    }
+                    append(
+                        if (row.collapsed) {
+                            row.node.collapsedLabel()
+                        } else {
+                            val quote = if (row.node is JsonNode.Embedded) "\"" else ""
+                            quote + if (row.node.branchBody() is JsonNode.Obj) "{" else "["
+                        },
+                    )
                 },
-                style = InspectorType.mono(12.sp, color = DebugPalette.textFaint),
+                modifier = Modifier.weight(1f),
+                style = InspectorType.mono(12.sp, color = DebugPalette.textFaint, lineHeight = 20.sp),
             )
         }
 
@@ -931,26 +942,23 @@ private fun JsonRowView(row: JsonRow, state: InspectorState) {
             )
         }
 
-        is JsonRow.Leaf -> Row(
+        is JsonRow.Leaf -> Text(
+            buildAnnotatedString {
+                if (row.label != null) {
+                    withStyle(SpanStyle(color = DebugPalette.accent)) { append("${row.label}: ") }
+                }
+                when (val node = row.node) {
+                    is JsonNode.Str -> withStyle(SpanStyle(color = DebugPalette.ok)) { append("\"${node.value}\"") }
+                    is JsonNode.Num -> withStyle(SpanStyle(color = DebugPalette.accent)) { append(node.raw) }
+                    is JsonNode.Bool -> withStyle(SpanStyle(color = DebugPalette.accent)) { append(node.value.toString()) }
+                    JsonNode.Null -> withStyle(SpanStyle(color = DebugPalette.textFaint, fontStyle = FontStyle.Italic)) {
+                        append("null")
+                    }
+                    else -> Unit
+                }
+            },
             modifier = Modifier.fillMaxWidth().padding(start = indent + 14.dp, top = 3.dp, bottom = 3.dp),
-        ) {
-            if (row.label != null) {
-                Text("${row.label}: ", style = InspectorType.mono(12.sp, color = DebugPalette.accent))
-            }
-            when (val node = row.node) {
-                is JsonNode.Str -> Text(
-                    "\"${node.value}\"",
-                    style = InspectorType.mono(12.sp, color = DebugPalette.ok, lineHeight = 20.sp),
-                )
-                is JsonNode.Num -> Text(node.raw, style = InspectorType.mono(12.sp, color = DebugPalette.accent, tabular = true))
-                is JsonNode.Bool -> Text(node.value.toString(), style = InspectorType.mono(12.sp, color = DebugPalette.accent))
-                JsonNode.Null -> Text(
-                    "null",
-                    style = InspectorType.mono(12.sp, color = DebugPalette.textFaint)
-                        .copy(fontStyle = FontStyle.Italic),
-                )
-                else -> Unit
-            }
-        }
+            style = InspectorType.mono(12.sp, color = DebugPalette.text, lineHeight = 20.sp),
+        )
     }
 }
