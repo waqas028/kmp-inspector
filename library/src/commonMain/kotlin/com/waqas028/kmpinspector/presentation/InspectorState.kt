@@ -37,6 +37,16 @@ internal fun NameOrder.flip(): NameOrder =
     if (this == NameOrder.Ascending) NameOrder.Descending else NameOrder.Ascending
 
 /**
+ * How a table's rows are drawn. Cards stack each row's columns vertically, so a phone only ever
+ * scrolls down; the grid lines rows up for comparing values across them, which needs width.
+ */
+internal enum class RowLayout { Cards, Grid }
+
+/** Cards at phone width, the grid wherever there is room for columns. */
+internal fun defaultRowLayout(pane: PaneWidth): RowLayout =
+    if (pane == PaneWidth.Compact) RowLayout.Cards else RowLayout.Grid
+
+/**
  * Three arrangements of one body. Breakpoints come straight from the handoff.
  */
 internal enum class PaneWidth { Compact, Medium, Expanded }
@@ -75,6 +85,8 @@ internal class InspectorState {
     var tableSort by mutableStateOf(NameOrder.Ascending)
     /** Rows come back in rowid order, so newest first means the last inserted row on top. */
     var rowSort by mutableStateOf(SortOrder.NewestFirst)
+    /** Null until the developer picks one; until then [defaultRowLayout] decides by width. */
+    var rowLayout by mutableStateOf<RowLayout?>(null)
     var sqlOpen by mutableStateOf(false)
     var sqlText by mutableStateOf("")
     var sqlError by mutableStateOf<String?>(null)
