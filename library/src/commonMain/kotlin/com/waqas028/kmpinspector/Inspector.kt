@@ -139,25 +139,24 @@ object Inspector {
     }
 
     /**
-     * Replaces the Database panel's contents. Pass a [controller] when the tables come from a live
+     * Shows a database in the Database panel. Pass a [controller] when the tables come from a live
      * database, so the Refresh button re-reads it and cell edits are written back; without one the
      * panel edits the snapshot in memory only.
+     *
+     * Databases are keyed by [DbInfo.fileName]: calling this again with the same name replaces
+     * that database, and a different name adds another one, which the panel offers in a picker.
      */
     fun setDatabase(info: DbInfo, tables: List<DbTable>, controller: DatabaseController? = null) {
         // Guarded because a controller is a live handle to the host's database. Holding one in a
         // build where the inspector is off is exactly the exposure this switch exists to prevent.
         if (!enabled) return
-        InspectorStore.database = info
-        InspectorStore.databaseController = controller
-        InspectorStore.databaseRefreshing = false
-        InspectorStore.tables.clear()
-        InspectorStore.tables.addAll(tables)
+        InspectorStore.putDatabase(info, tables, controller)
     }
 
     /**
      * Header names (case-insensitive) whose values are masked in anything shared off the device.
-     * Defaults cover Authorization, Cookie, Set-Cookie, Proxy-Authorization and X-Api-Key; pass an
-     * empty set to share everything verbatim.
+     * None by default, so a shared cURL carries its token and replays as-is. To keep secrets out
+     * of chats, pass e.g. `setOf("Authorization", "Cookie", "Set-Cookie")`.
      */
     fun redactHeaders(names: Set<String>) {
         InspectorStore.redactedHeaders = names.map { it.lowercase() }.toSet()

@@ -341,7 +341,13 @@ Every list has a sort toggle on its status line and a floating "Top" pill once y
 
 ### Sharing safely
 
-Share as cURL or Text masks `Authorization`, `Cookie`, `Set-Cookie`, `Proxy-Authorization` and `X-Api-Key` values, since shared text tends to end up in chats. The Headers tab and the clipboard copy stay verbatim. Change the list with `Inspector.redactHeaders(setOf(...))`, or pass an empty set to share everything.
+Share as cURL or Text sends every header as-is, tokens included, so a cURL that QA shares replays for the developer who receives it. Shared text tends to end up in chats, so if you would rather mask secrets, name the headers once at startup:
+
+```kotlin
+Inspector.redactHeaders(setOf("Authorization", "Cookie", "Set-Cookie"))
+```
+
+Those values are then sent as `<redacted>`. The Headers tab and the clipboard copy always stay verbatim.
 
 ## Feeding it data
 

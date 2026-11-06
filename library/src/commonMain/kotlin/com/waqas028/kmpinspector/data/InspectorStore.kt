@@ -37,9 +37,10 @@ internal object InspectorStore {
 
     /**
      * Header names whose values are masked in anything that leaves the device through Share.
-     * The in-app Headers tab and the clipboard still show them in full.
+     * Empty by default: QA shares a cURL so a developer can replay the request, and without its
+     * token the replay fails. The in-app Headers tab and the clipboard always show values in full.
      */
-    var redactedHeaders: Set<String> = setOf("authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key")
+    var redactedHeaders: Set<String> = emptySet()
 
     /**
      * Whether the inspector is open, and where the bubble sits. Shared rather than remembered per
@@ -65,11 +66,40 @@ internal object InspectorStore {
     val logs = mutableStateListOf<LogLine>()
     val crashes = mutableStateListOf<CrashRecord>()
     val work = mutableStateListOf<WorkJob>()
-    val tables = mutableStateListOf<DbTable>()
+    /**
+     * Every database the host handed over, in the order they arrived. An app can have several
+     * (say `app.db` and `cache.db`); each is keyed by its file name, so a refresh replaces its own
+     * entry and never another database's.
+     */
+    val databases = mutableStateListOf<AttachedDatabase>()
 
-    var database by mutableStateOf<DbInfo?>(null)
-    /** Live handle behind [database], when the host has one. */
-    var databaseController by mutableStateOf<DatabaseController?>(null)
+    /** File name of the database the panel shows. Null, or a name that is gone, means the first. */
+    var activeDatabaseName by mutableStateOf<String?>(null)
+
+    private val activeDatabase: AttachedDatabase?
+        get() = databases.firstOrNull { it.info.fileName == activeDatabaseName } ?: databases.firstOrNull()
+
+    /** The shown database's details, tables and live handle. Everything below reads these. */
+    val database: DbInfo? get() = activeDatabase?.info
+    val databaseController: DatabaseController? get() = activeDatabase?.controller
+    val tables: List<DbTable> get() = activeDatabase?.tables.orEmpty()
+
+    /** Adds a database, or replaces the one already held under the same file name. */
+    fun putDatabase(info: DbInfo, tables: List<DbTable>, controller: DatabaseController?) {
+        val entry = AttachedDatabase(info, tables, controller)
+        val index = databases.indexOfFirst { it.info.fileName == info.fileName }
+        if (index >= 0) databases[index] = entry else databases += entry
+        databaseRefreshing = false
+    }
+
+    /** Swaps one table of the shown database for [table], matched by name. Snapshot edits use it. */
+    fun replaceTable(table: DbTable) {
+        val current = activeDatabase ?: return
+        val index = databases.indexOf(current)
+        databases[index] = current.copy(
+            tables = current.tables.map { if (it.name == table.name) table else it },
+        )
+    }
 
     /** True from a Refresh tap until the next snapshot lands; drives the button's spinner. */
     var databaseRefreshing by mutableStateOf(false)
@@ -226,9 +256,8 @@ internal object InspectorStore {
     val hasCrash: Boolean get() = unreadCrashes > 0
 
     fun clear() {
-        requests.clear(); logs.clear(); crashes.clear(); work.clear(); tables.clear()
-        database = null
-        databaseController = null
+        requests.clear(); logs.clear(); crashes.clear(); work.clear(); databases.clear()
+        activeDatabaseName = null
         markRead()
         unreadCrashes = 0
         runCatching { CrashFile.clear() }
@@ -270,3 +299,10 @@ internal object InspectorStore {
         databaseController?.refresh() ?: notifyOpened()
     }
 }
+
+/** One database in the Database panel: what it is, its tables, and its live handle if any. */
+internal data class AttachedDatabase(
+    val info: DbInfo,
+    val tables: List<DbTable>,
+    val controller: DatabaseController?,
+)
