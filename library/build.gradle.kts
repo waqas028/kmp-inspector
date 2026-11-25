@@ -67,6 +67,7 @@ kotlin {
             compileOnly(libs.okhttp)
             compileOnly(libs.room.runtime)
             compileOnly(libs.androidx.work.runtime.ktx)
+            compileOnly(libs.androidx.datastore.preferences.core)
         }
 
         commonTest.dependencies {

@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.waqas028.kmpinspector.data.InspectorStore
+import com.waqas028.kmpinspector.data.startPlatformPreferences
 import com.waqas028.kmpinspector.presentation.bubble.InspectorBubble
 import com.waqas028.kmpinspector.presentation.rememberInspectorState
 import com.waqas028.kmpinspector.presentation.theme.ProvideInspectorFonts
@@ -43,6 +44,8 @@ fun KmpInspector(
 
     // Crashes written by a previous run are loaded once, before anything reads the list.
     remember { InspectorStore.restoreCrashes() }
+    // SharedPreferences (Android) or NSUserDefaults (iOS); nothing is read until the inspector opens.
+    remember { startPlatformPreferences() }
 
     val open = InspectorStore.inspectorOpen
     val state = rememberInspectorState()
@@ -56,9 +59,7 @@ fun KmpInspector(
                 hasCrash = InspectorStore.hasCrash,
                 onClick = {
                     // Tapping clears the unread count and opens the inspector.
-                    InspectorStore.markRead()
-                    InspectorStore.notifyOpened()
-                    InspectorStore.inspectorOpen = true
+                    InspectorStore.openInspector()
                 },
             )
         } else {

@@ -10,9 +10,9 @@
   </a>
 </p>
 
-An in-app debugging overlay for [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/) — inspect network traffic, database contents, background work, logs, and crashes from inside your running app.
+An in-app debugging overlay for [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/) — inspect network traffic, database contents, preferences, background work, logs, and crashes from inside your running app.
 
-KmpInspector is a floating bubble you wrap your UI with once. Tapping it opens a full-screen inspector with five panels, so you can debug a real device build without a laptop, a proxy, or a cable. It runs on **Android, iOS, and desktop** from a single Compose codebase, and it is deliberately client-agnostic: you feed it data from whatever HTTP client, database, and scheduler you already use, so it is not tied to Ktor, Room, or any specific stack. Drop it into any Compose Multiplatform app — or a Jetpack Compose Android app, or a Compose for Desktop app — enable it in debug builds, and switch it off for release.
+KmpInspector is a floating bubble you wrap your UI with once. Tapping it opens a full-screen inspector with six panels, so you can debug a real device build without a laptop, a proxy, or a cable. It runs on **Android, iOS, and desktop** from a single Compose codebase, and it is deliberately client-agnostic: you feed it data from whatever HTTP client, database, and scheduler you already use, so it is not tied to Ktor, Room, or any specific stack. Drop it into any Compose Multiplatform app — or a Jetpack Compose Android app, or a Compose for Desktop app — enable it in debug builds, and switch it off for release.
 
 ## What it shows
 
@@ -20,6 +20,7 @@ KmpInspector is a floating bubble you wrap your UI with once. Tapping it opens a
 |---------------------|--------------------------------------------------------------------------|
 | **Network**         | Requests with method, URL, status code, duration, and payload sizes      |
 | **Database**        | Your database info and table contents                                    |
+| **Preferences**     | SharedPreferences and DataStore (Android), NSUserDefaults (iOS); editable |
 | **Background Work** | Scheduled/queued jobs (Android WorkManager; a quiet tab elsewhere)       |
 | **Logs**            | A 2,000-line ring buffer, filterable by level                            |
 | **Crashes**         | Fatal crashes kept across restarts, plus non-fatal exceptions you record |
@@ -125,7 +126,7 @@ If your app had no `Application` class before, register the new one in `AndroidM
     ... >
 ```
 
-That single call floats the bubble over your screens (XML, Fragments, Compose, or a mix), captures fatal crashes across restarts, streams the app's own logcat into the Logs panel, and mirrors WorkManager's job list into Background Work when WorkManager is on your classpath. It is a no-op unless the build is `debuggable`, so release builds get nothing.
+That single call floats the bubble over your screens (XML, Fragments, Compose, or a mix), captures fatal crashes across restarts, streams the app's own logcat into the Logs panel, shows every SharedPreferences file in the Preferences panel, and mirrors WorkManager's job list into Background Work when WorkManager is on your classpath. It is a no-op unless the build is `debuggable`, so release builds get nothing.
 
 ### Step 3: Network — add the OkHttp interceptor
 
@@ -147,15 +148,28 @@ Retrofit runs on OkHttp, so this covers Retrofit too: pass the client to `Retrof
 KmpInspector.attach(database, fileName = "app.db")
 ```
 
-### Step 5: Run a debug build
+### Step 5: Preferences — attach your DataStore
+
+SharedPreferences need nothing: every file in the app's `shared_prefs` folder is listed, read each time the inspector opens, and kept live while it is open. A Preferences DataStore needs one line, because DataStore allows only one instance per file and the inspector has to reuse yours:
+
+```kotlin
+// Live: changes show as they happen, and edits are written back through your DataStore
+KmpInspector.attachDataStore(dataStore, name = "settings")
+```
+
+Your app's own files are listed first. Files written by SDKs such as Firebase, Facebook or WebView go into a **Libraries & SDKs** group below, collapsed until you tap it; a search looks in both. The split goes by file name, since Android does not record which code created a file. If one of your files lands in the libraries group, pass your source package as `appPackagePrefix` to `install`.
+
+Tap a key to read its full value, copy it, edit it (the value keeps its type: an int stays an int), or remove it. Proto DataStore is not supported, because reading it needs your own schema, and EncryptedSharedPreferences show their encrypted text.
+
+### Step 6: Run a debug build
 
 A draggable bubble now floats over your app. Tap it to open the inspector.
 
-Steps 3 and 4 are optional: skip one and only that panel stays empty. OkHttp, Room and WorkManager are `compileOnly` dependencies of the library, so you only need them on your classpath if you use that collector. For another HTTP client or database, see [Feeding it data](#feeding-it-data).
+Steps 3 to 5 are optional: skip one and only that panel stays empty. OkHttp, Room, DataStore and WorkManager are `compileOnly` dependencies of the library, so you only need them on your classpath if you use that collector. For another HTTP client or database, see [Feeding it data](#feeding-it-data).
 
 ### Options
 
-`install` takes a few options: `enabled` (defaults to the manifest's debuggable flag), `appPackagePrefix` for highlighting your stack frames, `captureLogcat`, `captureWorkManager`, and `excludeActivity` for screens that should not get the bubble, such as a splash. `appPackagePrefix` defaults to the application id; if your flavors use an `applicationIdSuffix`, pass your source package (for example `"com.example.shop"`) so the highlighted frames are really yours. Do not also wrap Compose content in `KmpInspector { }` on Android when using `install`, or you will see two bubbles.
+`install` takes a few options: `enabled` (defaults to the manifest's debuggable flag), `appPackagePrefix` for highlighting your stack frames, `captureLogcat`, `captureWorkManager`, `capturePreferences`, and `excludeActivity` for screens that should not get the bubble, such as a splash. `appPackagePrefix` defaults to the application id; if your flavors use an `applicationIdSuffix`, pass your source package (for example `"com.example.shop"`) so the highlighted frames are really yours. Do not also wrap Compose content in `KmpInspector { }` on Android when using `install`, or you will see two bubbles.
 
 ### Which screens get the bubble
 
@@ -241,6 +255,8 @@ RoomInspector.attach(database, fileName = "app.db")
 ```
 
 Logs come from your own `InspectorLog.i("Tag", "message")` calls. Not on Ktor or Room? Report through the plain `Inspector` calls in [Feeding it data](#feeding-it-data).
+
+Preferences need no code: on iOS the app's own `NSUserDefaults` appear in the Preferences panel, and on Android every SharedPreferences file does once `initializeInspector(this)` (or `install`) has handed over a Context. Add a DataStore with `KmpInspector.attachDataStore` from `androidMain`.
 
 ### Step 4: Host `App()` on each platform
 
@@ -337,7 +353,7 @@ setContent { App(showInspector = false) }
 
 ### Panel actions
 
-Every list has a sort toggle on its status line and a floating "Top" pill once you scroll. Network and Logs have **Clear**. Logs has **Share**, which sends the currently filtered lines as text. A table in Database has **CSV**, which shares the visible rows. The SQL editor runs real `SELECT` and `WITH` statements when a live database is attached, and falls back to showing the snapshot of the table named in the `FROM` clause otherwise.
+Every list has a sort toggle on its status line and a floating "Top" pill once you scroll. Network and Logs have **Clear**. Logs has **Share**, which sends the currently filtered lines as text. A table in Database has **CSV**, which shares the visible rows. In Preferences, search matches values as well as keys, so you can find which file holds a token; tap a key to copy, edit or remove it. The SQL editor runs real `SELECT` and `WITH` statements when a live database is attached, and falls back to showing the snapshot of the table named in the `FROM` clause otherwise.
 
 ### Sharing safely
 
@@ -396,6 +412,9 @@ Inspector.recordNonFatal(
 // Database and background work snapshots
 Inspector.setDatabase(info, tables)
 Inspector.setWork(jobs, engineLabel = "WorkManager 2.11")
+
+// Any other key-value store, e.g. a desktop settings file. Pass a PreferencesController to make it editable
+Inspector.setPreferences(PreferenceFile(name = "settings", source = "Properties", entries = entries))
 ```
 
 Because these are plain calls, the inspector works with any HTTP client (Ktor, OkHttp, …), any database (Room, SQLDelight, …), and any scheduler — you decide what to report.

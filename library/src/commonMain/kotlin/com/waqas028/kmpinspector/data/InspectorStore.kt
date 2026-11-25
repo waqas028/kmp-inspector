@@ -8,6 +8,8 @@ import com.waqas028.kmpinspector.domain.model.DbInfo
 import com.waqas028.kmpinspector.domain.model.DbTable
 import com.waqas028.kmpinspector.domain.model.LogLine
 import com.waqas028.kmpinspector.domain.model.NetworkRequest
+import com.waqas028.kmpinspector.domain.model.PreferenceFile
+import com.waqas028.kmpinspector.domain.model.PreferencesController
 import com.waqas028.kmpinspector.domain.model.WorkJob
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -59,6 +61,16 @@ internal object InspectorStore {
     var enabled: Boolean = true
 
     var inspectorOpen by mutableStateOf(false)
+
+    /**
+     * The one way the inspector opens, from whichever bubble was tapped: the unread badge clears,
+     * snapshot sources refresh, then the panel shows. Closing is just `inspectorOpen = false`.
+     */
+    fun openInspector() {
+        markRead()
+        notifyOpened()
+        inspectorOpen = true
+    }
     var bubblePosition by mutableStateOf<Offset?>(null)
     var bubbleOnRight by mutableStateOf(true)
 
@@ -103,6 +115,42 @@ internal object InspectorStore {
 
     /** True from a Refresh tap until the next snapshot lands; drives the button's spinner. */
     var databaseRefreshing by mutableStateOf(false)
+
+    /**
+     * Every key-value store handed over, keyed by source and name together: a SharedPreferences
+     * file and a DataStore may both be called `settings`.
+     */
+    val preferences = mutableStateListOf<AttachedPreferences>()
+
+    /** Adds a store, or replaces the one already held under the same source and name. */
+    fun putPreferences(file: PreferenceFile, controller: PreferencesController?) {
+        // The panel keys its rows by key, where a repeat is a crash in the host app, so
+        // uniqueness is enforced here rather than trusted from callers. The first one wins.
+        val unique = file.copy(entries = file.entries.distinctBy { it.key })
+        val entry = AttachedPreferences(unique, controller)
+        val index = preferences.indexOfFirst { it.file.source == file.source && it.file.name == file.name }
+        preferencesRefreshing = false
+        // Every open rescans every file. Writing back an identical snapshot would still redraw
+        // the panel, so unchanged files are skipped.
+        if (index >= 0 && preferences[index] == entry) return
+        if (index >= 0) preferences[index] = entry else preferences += entry
+    }
+
+    /** Drops [source]'s stores that are not in [names], e.g. a SharedPreferences file deleted since. */
+    fun retainPreferences(source: String, names: Set<String>) {
+        preferencesRefreshing = false
+        val gone: (AttachedPreferences) -> Boolean = { it.file.source == source && it.file.name !in names }
+        if (preferences.any(gone)) preferences.removeAll(gone)
+    }
+
+    var preferencesRefreshing by mutableStateOf(false)
+
+    /** Refresh button: each live store re-reads once, or the open hooks replay when there are none. */
+    fun refreshPreferences() {
+        val controllers = preferences.mapNotNull { it.controller }.distinct()
+        preferencesRefreshing = true
+        if (controllers.isEmpty()) notifyOpened() else controllers.forEach { runCatching { it.refresh() } }
+    }
     var appId by mutableStateOf("unknown")
     /** Host-supplied label for the work engine, e.g. "WorkManager 2.11". */
     var workLabel by mutableStateOf<String?>(null)
@@ -257,6 +305,7 @@ internal object InspectorStore {
 
     fun clear() {
         requests.clear(); logs.clear(); crashes.clear(); work.clear(); databases.clear()
+        preferences.clear()
         activeDatabaseName = null
         markRead()
         unreadCrashes = 0
@@ -306,3 +355,12 @@ internal data class AttachedDatabase(
     val tables: List<DbTable>,
     val controller: DatabaseController?,
 )
+
+/** One store in the Preferences panel, with its live handle if any. */
+internal data class AttachedPreferences(
+    val file: PreferenceFile,
+    val controller: PreferencesController?,
+) {
+    /** Stable id for selection and list keys; source and name together are unique. */
+    val id: String get() = "${file.source}/${file.name}"
+}

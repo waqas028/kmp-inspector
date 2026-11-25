@@ -25,6 +25,9 @@ import com.waqas028.kmpinspector.KmpInspector
  * The overlay view is the size of the frame but, until the inspector is open, contains nothing that
  * handles touches, so Compose reports the events unhandled and they fall through to the app's own
  * views underneath.
+ *
+ * Dialogs open in windows of their own, above this frame; [DialogOverlay] keeps the bubble above
+ * them.
  */
 internal class OverlayInjector(
     private val excludeActivity: (Activity) -> Boolean,
@@ -50,9 +53,12 @@ internal class OverlayInjector(
         if (root.findViewTreeLifecycleOwner() == null) return
         if (root.findViewTreeSavedStateRegistryOwner() == null) return
 
+        val screenId = System.identityHashCode(activity)
         val overlay = ComposeView(activity).apply {
             tag = TAG
-            setContent { KmpInspector {} }
+            // While this screen's bubble floats above one of its dialogs, that copy is the only
+            // one: nothing composes here, so there is no second bubble or inspector underneath.
+            setContent { if (DialogOverlay.hostScreenId != screenId) KmpInspector {} }
         }
         // A debugging aid must never be the reason the host app dies. If a screen we know nothing
         // about still rejects the overlay, that screen simply has no bubble.
@@ -60,7 +66,9 @@ internal class OverlayInjector(
             root.addView(overlay)
         } catch (_: RuntimeException) {
             runCatching { root.removeView(overlay) }
+            return
         }
+        DialogOverlay.watch(activity, root)
     }
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
@@ -68,7 +76,7 @@ internal class OverlayInjector(
     override fun onActivityPaused(activity: Activity) = Unit
     override fun onActivityStopped(activity: Activity) = Unit
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-    override fun onActivityDestroyed(activity: Activity) = Unit
+    override fun onActivityDestroyed(activity: Activity) = DialogOverlay.release(activity)
 
     private companion object {
         const val TAG = "kmp_inspector_overlay"

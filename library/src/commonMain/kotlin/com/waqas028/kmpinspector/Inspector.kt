@@ -8,6 +8,8 @@ import com.waqas028.kmpinspector.domain.model.DatabaseController
 import com.waqas028.kmpinspector.domain.model.DbInfo
 import com.waqas028.kmpinspector.domain.model.DbTable
 import com.waqas028.kmpinspector.domain.model.NetworkRequest
+import com.waqas028.kmpinspector.domain.model.PreferenceFile
+import com.waqas028.kmpinspector.domain.model.PreferencesController
 import com.waqas028.kmpinspector.domain.model.StackFrame
 import com.waqas028.kmpinspector.domain.model.WorkJob
 
@@ -151,6 +153,24 @@ object Inspector {
         // build where the inspector is off is exactly the exposure this switch exists to prevent.
         if (!enabled) return
         InspectorStore.putDatabase(info, tables, controller)
+    }
+
+    /**
+     * Shows a key-value store in the Preferences panel. Pass a [controller] when the values come
+     * from a live store, so Refresh re-reads it and edits are written back; without one the
+     * panel is read-only.
+     *
+     * Stores are keyed by [PreferenceFile.source] and [PreferenceFile.name] together: calling this
+     * again with both the same replaces that store, anything else adds another one.
+     *
+     * On Android, SharedPreferences are read for you and a DataStore needs only
+     * `KmpInspector.attachDataStore`; on iOS the app's NSUserDefaults appear on their own. Use
+     * this for anything else, such as a desktop app's settings file.
+     */
+    fun setPreferences(file: PreferenceFile, controller: PreferencesController? = null) {
+        // Guarded for the same reason as setDatabase: a controller is a live handle to app data.
+        if (!enabled) return
+        InspectorStore.putPreferences(file, controller)
     }
 
     /**

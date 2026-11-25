@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
  */
 internal enum class Glyph {
     TravelExplore, Close, Search, SwapVert, TableChart, WorkHistory, Subject, ErrorMark,
-    ChevronRight, ArrowBack, ContentCopy, Terminal, Pause, PlayArrow, Share, CheckCircle,
+    ChevronRight, ArrowBack, ContentCopy, Terminal, Pause, PlayArrow, Share, CheckCircle, Tune,
 }
 
 @Composable
@@ -150,6 +150,19 @@ internal fun DrawScope.drawGlyph(glyph: Glyph, tint: Color) {
         Glyph.CheckCircle -> {
             drawCircle(tint, radius = 8f * u, center = p(12f, 12f), style = stroke)
             line(7.8f, 12.2f, 10.8f, 15.2f); line(10.8f, 15.2f, 16.2f, 9f)
+        }
+
+        // Three sliders, each knob at a different stop: settings, not a table.
+        Glyph.Tune -> {
+            val r = 2.2f
+            fun slider(y: Float, knob: Float) {
+                line(4f, y, knob - r, y)
+                drawCircle(tint, radius = r * u, center = p(knob, y), style = stroke)
+                line(knob + r, y, 20f, y)
+            }
+            slider(6.5f, 15.5f)
+            slider(12f, 8.5f)
+            slider(17.5f, 13.5f)
         }
     }
 }
