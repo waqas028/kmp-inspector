@@ -82,8 +82,8 @@ Use the real artifact in debug builds and the `no-op` twin in release. The no-op
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    debugImplementation("io.github.waqas028:kmp-inspector:1.0.2")
-    releaseImplementation("io.github.waqas028:kmp-inspector-no-op:1.0.2")
+    debugImplementation("io.github.waqas028:kmp-inspector:1.0.3")
+    releaseImplementation("io.github.waqas028:kmp-inspector-no-op:1.0.3")
 }
 ```
 
@@ -91,7 +91,7 @@ Using a version catalog? Add both to `gradle/libs.versions.toml`:
 
 ```toml
 [versions]
-kmp-inspector = "1.0.2"
+kmp-inspector = "1.0.3"
 
 [libraries]
 kmp-inspector = { module = "io.github.waqas028:kmp-inspector", version.ref = "kmp-inspector" }
@@ -148,7 +148,7 @@ Retrofit runs on OkHttp, so this covers Retrofit too: pass the client to `Retrof
 KmpInspector.attach(database, fileName = "app.db")
 ```
 
-On Room 3 (the `androidx.room3` package), this call cannot take your database, because Room 3 is a separate library with its own `RoomDatabase` class. Add `debugImplementation("io.github.waqas028:kmp-inspector-room3:1.0.2")` and call `com.waqas028.kmpinspector.room3.RoomInspector.attach(database, fileName = "app.db")` from debug-only code (for example `src/debug`), because this artifact has no no-op twin; see [Keeping it out of release builds](#keeping-it-out-of-release-builds).
+On Room 3 (the `androidx.room3` package), this call cannot take your database, because Room 3 is a separate library with its own `RoomDatabase` class. Add `debugImplementation("io.github.waqas028:kmp-inspector-room3:1.0.3")` and call `com.waqas028.kmpinspector.room3.RoomInspector.attach(database, fileName = "app.db")` from debug-only code (for example `src/debug`), because this artifact has no no-op twin; see [Keeping it out of release builds](#keeping-it-out-of-release-builds).
 
 ### Step 5: Preferences — attach your DataStore
 
@@ -199,13 +199,13 @@ For a Compose Multiplatform (CMP) app with a shared Compose module: `composeApp`
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.waqas028:kmp-inspector:1.0.2")
+            implementation("io.github.waqas028:kmp-inspector:1.0.3")
 
             // Optional companions, always the same version as the line above
-            implementation("io.github.waqas028:kmp-inspector-ktor:1.0.1")   // Network panel from Ktor
-            implementation("io.github.waqas028:kmp-inspector-room:1.0.1")   // Database panel from Room 2.7–2.8
+            implementation("io.github.waqas028:kmp-inspector-ktor:1.0.3")   // Network panel from Ktor
+            implementation("io.github.waqas028:kmp-inspector-room:1.0.3")   // Database panel from Room 2.7–2.8
             // or, if your app uses Room 3 (androidx.room3):
-            // implementation("io.github.waqas028:kmp-inspector-room3:1.0.2")
+            // implementation("io.github.waqas028:kmp-inspector-room3:1.0.3")
         }
     }
 }
@@ -472,9 +472,9 @@ val inspectorEnabled = System.getenv("CONFIGURATION") != "Release" &&
 sourceSets {
     commonMain.dependencies {
         if (inspectorEnabled) {
-            implementation("io.github.waqas028:kmp-inspector:1.0.2")
+            implementation("io.github.waqas028:kmp-inspector:1.0.3")
         } else {
-            implementation("io.github.waqas028:kmp-inspector-no-op:1.0.2")
+            implementation("io.github.waqas028:kmp-inspector-no-op:1.0.3")
         }
     }
 }
