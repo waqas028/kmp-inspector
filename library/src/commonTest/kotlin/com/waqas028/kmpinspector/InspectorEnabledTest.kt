@@ -4,6 +4,7 @@ import com.waqas028.kmpinspector.data.InspectorStore
 import com.waqas028.kmpinspector.domain.model.DbInfo
 import com.waqas028.kmpinspector.domain.model.DbTable
 import com.waqas028.kmpinspector.domain.model.LogLevel
+import com.waqas028.kmpinspector.domain.model.PreferenceFile
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -52,6 +53,15 @@ class InspectorEnabledTest {
         assertNull(InspectorStore.database)
         assertNull(InspectorStore.databaseController)
         assertTrue(InspectorStore.tables.isEmpty())
+    }
+
+    @Test
+    fun no_preferences_handle_is_kept_while_disabled() {
+        Inspector.enabled = false
+
+        Inspector.setPreferences(PreferenceFile("session", "SharedPreferences", emptyList()))
+
+        assertTrue(InspectorStore.preferences.isEmpty())
     }
 
     @Test

@@ -48,6 +48,7 @@ import com.waqas028.kmpinspector.presentation.listPaneWidth
 import com.waqas028.kmpinspector.presentation.logs.LogsSection
 import com.waqas028.kmpinspector.presentation.network.NetworkSection
 import com.waqas028.kmpinspector.presentation.paneWidthFor
+import com.waqas028.kmpinspector.presentation.preferences.PreferencesSection
 import com.waqas028.kmpinspector.presentation.InspectorBackHandler
 import com.waqas028.kmpinspector.presentation.theme.DebugPalette
 import com.waqas028.kmpinspector.presentation.theme.Glyph
@@ -63,6 +64,7 @@ internal fun visibleTabs(): List<InspectorTab> =
 private fun InspectorTab.glyph(): Glyph = when (this) {
     InspectorTab.Network -> Glyph.SwapVert
     InspectorTab.Database -> Glyph.TableChart
+    InspectorTab.Preferences -> Glyph.Tune
     InspectorTab.Work -> Glyph.WorkHistory
     InspectorTab.Logs -> Glyph.Subject
     InspectorTab.Crashes -> Glyph.ErrorMark
@@ -71,6 +73,7 @@ private fun InspectorTab.glyph(): Glyph = when (this) {
 private fun InspectorTab.searchPlaceholder(): String = when (this) {
     InspectorTab.Network -> "Search network…"
     InspectorTab.Database -> "Search tables…"
+    InspectorTab.Preferences -> "Search keys and values…"
     InspectorTab.Work -> "Search work…"
     InspectorTab.Logs -> "Search logs…"
     InspectorTab.Crashes -> "Search crashes…"
@@ -104,6 +107,7 @@ internal fun InspectorShell(state: InspectorState, onClose: () -> Unit) = Inspec
                     when (state.tab) {
                         InspectorTab.Network -> NetworkSection(state, pane)
                         InspectorTab.Database -> DatabaseSection(state, pane)
+                        InspectorTab.Preferences -> PreferencesSection(state, pane)
                         InspectorTab.Work -> WorkSection(state, pane)
                         InspectorTab.Logs -> LogsSection(state)
                         InspectorTab.Crashes -> CrashesSection(state, pane)

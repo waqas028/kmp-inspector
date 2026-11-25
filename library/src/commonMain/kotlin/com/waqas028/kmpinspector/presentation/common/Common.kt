@@ -26,6 +26,15 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.TimeSource
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.draw.shadow
@@ -132,6 +141,55 @@ internal fun StatusLine(text: String, trailing: @Composable () -> Unit = {}) {
     ) {
         Text(text, modifier = Modifier.weight(1f).padding(end = 8.dp), style = InspectorType.meta, maxLines = 2)
         trailing()
+    }
+}
+
+/**
+ * The Refresh pill on a status line. While [inFlight] is true the arrow becomes a spinner. The
+ * spinner stays up for at least a second even when the read is instant, so the tap visibly did
+ * something, and a timeout calls [settle] in case a host never answers.
+ */
+@Composable
+internal fun RefreshPill(inFlight: () -> Boolean, settle: () -> Unit, onRefresh: () -> Unit) {
+    var refreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        snapshotFlow { inFlight() }.collect { active ->
+            if (!active) return@collect
+            refreshing = true
+            val started = TimeSource.Monotonic.markNow()
+            withTimeoutOrNull(10_000) {
+                snapshotFlow { inFlight() }.first { !it }
+            }
+            settle()
+            delay((1_000 - started.elapsedNow().inWholeMilliseconds).coerceAtLeast(0))
+            refreshing = false
+        }
+    }
+    HitTarget(onClick = { if (!refreshing) onRefresh() }) {
+        Row(
+            modifier = Modifier
+                .height(32.dp)
+                .background(DebugPalette.activePillFill, RoundedCornerShape(16.dp))
+                .border(1.dp, DebugPalette.accent, RoundedCornerShape(16.dp))
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (refreshing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(12.dp),
+                    color = DebugPalette.accent,
+                    strokeWidth = 1.5.dp,
+                )
+            } else {
+                Text("↻", style = InspectorType.mono(11.5.sp, FontWeight.Medium, DebugPalette.accent))
+            }
+            Text(
+                if (refreshing) "Refreshing" else "Refresh",
+                modifier = Modifier.padding(start = 6.dp),
+                style = InspectorType.mono(11.5.sp, FontWeight.Medium, DebugPalette.accent),
+                maxLines = 1,
+            )
+        }
     }
 }
 

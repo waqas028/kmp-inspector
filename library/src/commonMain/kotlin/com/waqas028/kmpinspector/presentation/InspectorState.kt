@@ -14,7 +14,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 
 internal enum class InspectorTab(val label: String) {
-    Network("Network"), Database("Database"), Work("Background Work"), Logs("Logs"), Crashes("Crashes")
+    Network("Network"), Database("Database"), Preferences("Preferences"), Work("Background Work"),
+    Logs("Logs"), Crashes("Crashes")
 }
 
 internal enum class NetworkFilter(val label: String) { All("All"), Errors("Errors"), Slow("Slow"), Writes("Writes") }
@@ -115,17 +116,29 @@ internal class InspectorState {
     var selectedWorkId by mutableStateOf<String?>(null)
     var workSort by mutableStateOf(SortOrder.NewestFirst)
 
+    /** [com.waqas028.kmpinspector.data.AttachedPreferences.id] of the open store. */
+    var selectedPreferencesId by mutableStateOf<String?>(null)
+    /** Keys sort by name, A to Z first, like tables. */
+    var preferenceSort by mutableStateOf(NameOrder.Ascending)
+    var editingPreference by mutableStateOf<PreferenceAddress?>(null)
+    /** Third-party SDK files start folded away, so the app's own files are what you see first. */
+    var librariesExpanded by mutableStateOf(false)
+    var preferenceDraft by mutableStateOf("")
+    var preferenceError by mutableStateOf<String?>(null)
+
     /**
      * System back at phone width: step out of whatever is open on top first, one layer per press,
      * and report whether anything was consumed. The caller closes the inspector when nothing was.
      */
     fun handleBack(): Boolean = when {
         editingCell != null -> { editingCell = null; true }
+        editingPreference != null -> { editingPreference = null; true }
         sqlOpen -> { sqlOpen = false; true }
         selectedRequestId != null -> { selectedRequestId = null; curlVisible = false; true }
         selectedTable != null || sqlResult != null -> { selectedTable = null; sqlResult = null; true }
         selectedCrashId != null -> { selectedCrashId = null; true }
         selectedWorkId != null -> { selectedWorkId = null; true }
+        selectedPreferencesId != null -> { selectedPreferencesId = null; true }
         else -> false
     }
 
@@ -142,8 +155,13 @@ internal class InspectorState {
         selectedCrashId = null
         selectedWorkId = null
         editingCell = null
+        selectedPreferencesId = null
+        editingPreference = null
     }
 }
+
+/** The preference open in the editor sheet. */
+internal data class PreferenceAddress(val storeId: String, val key: String)
 
 internal data class CellAddress(
     val table: String,

@@ -5,6 +5,8 @@ import com.waqas028.kmpinspector.domain.model.DatabaseController
 import com.waqas028.kmpinspector.domain.model.DbInfo
 import com.waqas028.kmpinspector.domain.model.DbTable
 import com.waqas028.kmpinspector.domain.model.NetworkRequest
+import com.waqas028.kmpinspector.domain.model.PreferenceFile
+import com.waqas028.kmpinspector.domain.model.PreferencesController
 import com.waqas028.kmpinspector.domain.model.StackFrame
 import com.waqas028.kmpinspector.domain.model.WorkJob
 
@@ -34,6 +36,7 @@ object Inspector {
     fun recordCrash(record: CrashRecord) = Unit
     fun setWork(jobs: List<WorkJob>, engineLabel: String? = null) = Unit
     fun setDatabase(info: DbInfo, tables: List<DbTable>, controller: DatabaseController? = null) = Unit
+    fun setPreferences(file: PreferenceFile, controller: PreferencesController? = null) = Unit
     fun redactHeaders(names: Set<String>) = Unit
     fun onOpen(listener: () -> Unit) = Unit
     fun clear() = Unit

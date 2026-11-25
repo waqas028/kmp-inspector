@@ -24,4 +24,6 @@ android {
 dependencies {
     implementation(project(":sample:shared"))
     implementation(libs.androidx.activity.compose)
+    // Only to demo KmpInspector.attachDataStore in the Preferences panel.
+    implementation(libs.androidx.datastore.preferences)
 }

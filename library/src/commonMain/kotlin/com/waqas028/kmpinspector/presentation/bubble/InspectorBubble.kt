@@ -48,7 +48,7 @@ import androidx.compose.runtime.getValue
 
 private enum class SnapEdge { Left, Right }
 
-private val BUBBLE_SIZE = 56.dp
+internal val BUBBLE_SIZE = 56.dp
 
 /** How far the resting bubble hangs off the snapped edge. */
 private val RECESS = 16.dp
@@ -86,130 +86,138 @@ internal fun InspectorBubble(
             mutableStateOf(if (InspectorStore.bubbleOnRight) SnapEdge.Right else SnapEdge.Left)
         }
         var position by remember {
-            mutableStateOf(
-                InspectorStore.bubblePosition?.let {
-                    Offset(
-                        it.x.coerceIn(0f, (maxX - bubblePx).coerceAtLeast(0f)),
-                        it.y.coerceIn(0f, (maxY - bubblePx).coerceAtLeast(0f)),
-                    )
-                },
-            )
+            mutableStateOf(InspectorStore.bubblePosition?.let { clampBubble(it, bubblePx, maxX, maxY) })
         }
         LaunchedEffect(position, edge) {
             InspectorStore.bubblePosition = position
             InspectorStore.bubbleOnRight = edge == SnapEdge.Right
         }
 
-        val current = position ?: Offset(maxX - bubblePx, maxY * 0.62f)
+        val current = position ?: defaultBubblePosition(bubblePx, maxX, maxY)
 
         val active = dragging || pressed
-        val informational = unreadCount > 0 || hasCrash
-        val targetAlpha = when {
-            active -> 1f
-            informational -> 0.92f
-            else -> 0.40f
-        }
-        val alpha by animateFloatAsState(targetAlpha, tween(160), label = "bubbleAlpha")
-        val scale by animateFloatAsState(if (active) 1.06f else 1f, tween(120), label = "bubbleScale")
 
         // Touch-down brings it fully back in before the tap resolves, so the whole circle is hittable.
         val recessTarget = if (active) 0f else recessPx
         val recess by animateFloatAsState(recessTarget, tween(160), label = "bubbleRecess")
         val recessX = if (edge == SnapEdge.Right) recess else -recess
 
+        BubbleFace(
+            unreadCount = unreadCount,
+            hasCrash = hasCrash,
+            onRight = edge == SnapEdge.Right,
+            active = active,
+            modifier = Modifier.offset { IntOffset((current.x + recessX).roundToInt(), current.y.roundToInt()) },
+            gestures = Modifier
+                .pointerInput(maxX, maxY) {
+                    detectDragGestures(
+                        onDragStart = { dragging = true },
+                        onDragEnd = {
+                            dragging = false
+                            val (snapped, toRight) = snapBubble(position ?: current, bubblePx, maxX, maxY)
+                            edge = if (toRight) SnapEdge.Right else SnapEdge.Left
+                            position = snapped
+                        },
+                        onDragCancel = { dragging = false },
+                    ) { change, drag ->
+                        change.consume()
+                        position = clampBubble((position ?: current) + drag, bubblePx, maxX, maxY)
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = {
+                            pressed = true
+                            tryAwaitRelease()
+                            pressed = false
+                        },
+                        onTap = { onClick() },
+                    )
+                },
+        )
+    }
+}
+
+/**
+ * How the bubble looks, without where it is or how it moves: the circle, the crash halo and the
+ * unread badge. [gestures] goes on the circle itself. Android also draws this above app dialogs,
+ * in a small window of its own that it moves itself.
+ */
+@Composable
+internal fun BubbleFace(
+    unreadCount: Int,
+    hasCrash: Boolean,
+    onRight: Boolean,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    gestures: Modifier = Modifier,
+) {
+    val informational = unreadCount > 0 || hasCrash
+    val targetAlpha = when {
+        active -> 1f
+        informational -> 0.92f
+        else -> 0.40f
+    }
+    val alpha by animateFloatAsState(targetAlpha, tween(160), label = "bubbleAlpha")
+    val scale by animateFloatAsState(if (active) 1.06f else 1f, tween(120), label = "bubbleScale")
+
+    Box(modifier = modifier.size(BUBBLE_SIZE)) {
+        if (hasCrash) CrashHalo()
+
         Box(
             modifier = Modifier
-                .offset { IntOffset((current.x + recessX).roundToInt(), current.y.roundToInt()) }
-                .size(BUBBLE_SIZE),
+                .size(BUBBLE_SIZE)
+                .scale(scale)
+                .alpha(alpha)
+                .shadow(4.dp, CircleShape)
+                .background(
+                    if (hasCrash) DebugPalette.crashFill else DebugPalette.surfaceRaised,
+                    CircleShape,
+                )
+                .border(1.dp, if (hasCrash) DebugPalette.bad else DebugPalette.accent, CircleShape)
+                .semantics {
+                    contentDescription = buildString {
+                        append("Open KmpInspector")
+                        if (unreadCount > 0) append(", $unreadCount new")
+                        if (hasCrash) append(", crash captured")
+                    }
+                }
+                .then(gestures),
+            contentAlignment = Alignment.Center,
         ) {
-            if (hasCrash) CrashHalo()
+            // One glyph in every state. The crash state is carried by the fill, the border,
+            // the pulsing halo and the badge instead of by a different symbol.
+            InspectorIcon(
+                glyph = Glyph.TravelExplore,
+                contentDescription = null,
+                size = 24.dp,
+                tint = if (hasCrash) DebugPalette.bad else DebugPalette.accent,
+            )
+        }
 
+        // The badge is the exception to the transparency: a translucent number is not a number.
+        // It sits on the inward side so it stays visible while the bubble is recessed.
+        if (unreadCount > 0 || hasCrash) {
+            val count = if (hasCrash && unreadCount == 0) 1 else unreadCount
             Box(
                 modifier = Modifier
-                    .size(BUBBLE_SIZE)
-                    .scale(scale)
-                    .alpha(alpha)
-                    .shadow(4.dp, CircleShape)
-                    .background(
-                        if (hasCrash) DebugPalette.crashFill else DebugPalette.surfaceRaised,
-                        CircleShape,
-                    )
-                    .border(1.dp, if (hasCrash) DebugPalette.bad else DebugPalette.accent, CircleShape)
-                    .semantics {
-                        contentDescription = buildString {
-                            append("Open KmpInspector")
-                            if (unreadCount > 0) append(", $unreadCount new")
-                            if (hasCrash) append(", crash captured")
-                        }
-                    }
-                    .pointerInput(maxX, maxY) {
-                        detectDragGestures(
-                            onDragStart = { dragging = true },
-                            onDragEnd = {
-                                dragging = false
-                                // Snap horizontally only. Vertical stays where the finger left it:
-                                // top and bottom are where host apps keep their own bars.
-                                val p = position ?: current
-                                val toRight = p.x + bubblePx / 2f > maxX / 2f
-                                edge = if (toRight) SnapEdge.Right else SnapEdge.Left
-                                position = Offset(if (toRight) maxX - bubblePx else 0f, p.y)
-                            },
-                            onDragCancel = { dragging = false },
-                        ) { change, drag ->
-                            change.consume()
-                            val next = (position ?: current) + drag
-                            position = Offset(
-                                next.x.coerceIn(0f, (maxX - bubblePx).coerceAtLeast(0f)),
-                                next.y.coerceIn(0f, (maxY - bubblePx).coerceAtLeast(0f)),
-                            )
-                        }
-                    }
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                pressed = true
-                                tryAwaitRelease()
-                                pressed = false
-                            },
-                            onTap = { onClick() },
-                        )
-                    },
+                    .align(if (onRight) Alignment.TopStart else Alignment.TopEnd)
+                    .offset(x = if (onRight) (-10).dp else 10.dp, y = (-6).dp)
+                    .widthIn(min = 20.dp)
+                    .background(DebugPalette.accent, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                // One glyph in every state. The crash state is carried by the fill, the border,
-                // the pulsing halo and the badge instead of by a different symbol.
-                InspectorIcon(
-                    glyph = Glyph.TravelExplore,
-                    contentDescription = null,
-                    size = 24.dp,
-                    tint = if (hasCrash) DebugPalette.bad else DebugPalette.accent,
+                Text(
+                    text = count.toString(),
+                    style = InspectorType.mono(
+                        size = 11.sp,
+                        weight = FontWeight.Bold,
+                        color = DebugPalette.badgeText,
+                        tabular = true,
+                    ),
+                    maxLines = 1,
                 )
-            }
-
-            // The badge is the exception to the transparency: a translucent number is not a number.
-            // It sits on the inward side so it stays visible while the bubble is recessed.
-            if (unreadCount > 0 || hasCrash) {
-                val count = if (hasCrash && unreadCount == 0) 1 else unreadCount
-                Box(
-                    modifier = Modifier
-                        .align(if (edge == SnapEdge.Right) Alignment.TopStart else Alignment.TopEnd)
-                        .offset(x = if (edge == SnapEdge.Right) (-10).dp else 10.dp, y = (-6).dp)
-                        .widthIn(min = 20.dp)
-                        .background(DebugPalette.accent, RoundedCornerShape(10.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = count.toString(),
-                        style = InspectorType.mono(
-                            size = 11.sp,
-                            weight = FontWeight.Bold,
-                            color = DebugPalette.badgeText,
-                            tabular = true,
-                        ),
-                        maxLines = 1,
-                    )
-                }
             }
         }
     }
