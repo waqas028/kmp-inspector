@@ -144,9 +144,11 @@ Retrofit runs on OkHttp, so this covers Retrofit too: pass the client to `Retrof
 ### Step 4: Database — attach your Room database
 
 ```kotlin
-// Room 2.7+. Snapshots now and again each time the inspector is opened
+// Room 2.7 or 2.8. Snapshots now and again each time the inspector is opened
 KmpInspector.attach(database, fileName = "app.db")
 ```
+
+On Room 3 (the `androidx.room3` package), this call cannot take your database, because Room 3 is a separate library with its own `RoomDatabase` class. Add `debugImplementation("io.github.waqas028:kmp-inspector-room3:1.0.2")` and call `com.waqas028.kmpinspector.room3.RoomInspector.attach(database, fileName = "app.db")` from debug-only code (for example `src/debug`), because this artifact has no no-op twin; see [Keeping it out of release builds](#keeping-it-out-of-release-builds).
 
 ### Step 5: Preferences — attach your DataStore
 
@@ -201,7 +203,9 @@ kotlin {
 
             // Optional companions, always the same version as the line above
             implementation("io.github.waqas028:kmp-inspector-ktor:1.0.1")   // Network panel from Ktor
-            implementation("io.github.waqas028:kmp-inspector-room:1.0.1")   // Database panel from Room
+            implementation("io.github.waqas028:kmp-inspector-room:1.0.1")   // Database panel from Room 2.7–2.8
+            // or, if your app uses Room 3 (androidx.room3):
+            // implementation("io.github.waqas028:kmp-inspector-room3:1.0.2")
         }
     }
 }
@@ -251,6 +255,7 @@ val client = HttpClient {
 }
 
 // Database: your Room database, on every platform
+// (on Room 3, import com.waqas028.kmpinspector.room3.RoomInspector instead; the call is the same)
 RoomInspector.attach(database, fileName = "app.db")
 ```
 
@@ -367,7 +372,7 @@ Those values are then sent as `<redacted>`. The Headers tab and the clipboard co
 
 ## Feeding it data
 
-On Android, `install` plus the OkHttp interceptor and `attach` cover the common sources. On every platform, the two companion artifacts cover Ktor and Room:
+On Android, `install` plus the OkHttp interceptor and `attach` cover the common sources. On every platform, the companion artifacts cover Ktor and Room:
 
 ```kotlin
 // Network, any platform: com.waqas028.kmpinspector.ktor
@@ -375,11 +380,12 @@ HttpClient {
     install(KmpInspectorPlugin)
 }
 
-// Database, any platform: com.waqas028.kmpinspector.room
+// Database, any platform: com.waqas028.kmpinspector.room (Room 2.7–2.8)
+// or com.waqas028.kmpinspector.room3 from kmp-inspector-room3 (Room 3)
 RoomInspector.attach(database, fileName = "app.db")
 ```
 
-The Ktor plugin records method, URL, status, timing, headers and text bodies, and keeps binary responses untouched apart from their size. `RoomInspector.attach` reads tables now and on every open or Refresh, writes cell edits back, and runs the SQL editor's queries against the live database. On Android it is the same collector as `KmpInspector.attach`.
+The Ktor plugin records method, URL, status, timing, headers and text bodies, and keeps binary responses untouched apart from their size. `RoomInspector.attach` reads tables now and on every open or Refresh, writes cell edits back, and runs the SQL editor's queries against the live database. On Android the Room 2 version is the same collector as `KmpInspector.attach`; the Room 3 version reads through Room 3's connection API on every platform.
 
 Everything else goes through the `Inspector` and `InspectorLog` entry points. Call `Inspector.configure(...)` once at startup, then record data wherever it happens in your app.
 
@@ -476,7 +482,7 @@ sourceSets {
 
 Release archives from Xcode then link the no-op, and a desktop release passes `-PinspectorEnabled=false`.
 
-One catch: `kmp-inspector-ktor` and `kmp-inspector-room` depend on the real library, so they have no no-op twin and must sit behind the same condition. Guard those two dependencies with the same flag and keep their call sites in a source set that is only compiled when the inspector is on.
+One catch: `kmp-inspector-ktor`, `kmp-inspector-room` and `kmp-inspector-room3` depend on the real library, so they have no no-op twin and must sit behind the same condition. Guard those dependencies with the same flag and keep their call sites in a source set that is only compiled when the inspector is on.
 
 ## Sample app
 
