@@ -83,7 +83,7 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY_CONTENTS }}
       
         run: |
-          ./gradlew :library:publishAndReleaseToMavenCentral :library-noop:publishAndReleaseToMavenCentral :library-ktor:publishAndReleaseToMavenCentral :library-room:publishAndReleaseToMavenCentral \
+          ./gradlew :library:publishAndReleaseToMavenCentral :library-noop:publishAndReleaseToMavenCentral :library-ktor:publishAndReleaseToMavenCentral :library-room:publishAndReleaseToMavenCentral :library-room3:publishAndReleaseToMavenCentral \
             -PlibraryVersion="$VERSION" \
             --no-configuration-cache \
             --stacktrace
@@ -112,7 +112,7 @@ jobs:
         run: |
           # Only the dependency coordinates and the catalog entry; prose is left alone.
           perl -pi -e '
-            s{(io\.github\.waqas028:kmp-inspector(?:-no-op)?:)[0-9A-Za-z.-]+}{$1$ENV{VERSION}}g;
+            s{(io\.github\.waqas028:kmp-inspector(?:-no-op|-ktor|-room3?)?:)[0-9A-Za-z.-]+}{$1$ENV{VERSION}}g;
             s{^(kmp-inspector = ")[^"]*(")}{$1$ENV{VERSION}$2};
           ' README.md
           git diff --stat -- README.md

@@ -85,7 +85,8 @@ object KmpInspector {
 
     /**
      * Shows [database]'s tables in the Database panel. A snapshot is taken now and again every
-     * time the inspector is opened, so the rows are current as of the tap. Needs Room 2.7 or newer.
+     * time the inspector is opened, so the rows are current as of the tap. Needs Room 2.7 or 2.8;
+     * Room 3 (`androidx.room3`) is a separate library, covered by the `kmp-inspector-room3` artifact.
      *
      * [fileName] is only used for the header label; Room's KMP builder does not expose it.
      */
